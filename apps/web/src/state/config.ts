@@ -11,6 +11,10 @@ import {
   DEFAULT_FAILURE_SOUND_ID,
   DEFAULT_SUCCESS_SOUND_ID,
 } from '../utils/notifications';
+import {
+  getKnownApiProviderPresets,
+  getSuggestedModelsByProtocol,
+} from '../../../../../../src/shared/modelCatalog';
 
 const STORAGE_KEY = 'open-design:config';
 const CONFIG_MIGRATION_VERSION = 1;
@@ -40,19 +44,23 @@ export const DEFAULT_PET: PetConfig = {
   },
 };
 
+const DEFAULT_API_PROVIDER =
+  getKnownApiProviderPresets().find((provider) => provider.protocol === 'anthropic') ??
+  getKnownApiProviderPresets()[0];
+
 export const DEFAULT_CONFIG: AppConfig = {
   mode: 'daemon',
   apiKey: '',
-  baseUrl: 'https://api.anthropic.com',
-  model: 'claude-sonnet-4-5',
+  baseUrl: DEFAULT_API_PROVIDER?.baseUrl ?? '',
+  model: DEFAULT_API_PROVIDER?.model ?? '',
   // New configs should be explicit. loadConfig() still detects parsed legacy
   // saved configs that did not have this field and migrates those from their
   // saved baseUrl/model before applying the current migration version.
-  apiProtocol: 'anthropic',
+  apiProtocol: (DEFAULT_API_PROVIDER?.protocol ?? 'anthropic') as ApiProtocol,
   apiVersion: '',
   apiProtocolConfigs: {},
   configMigrationVersion: CONFIG_MIGRATION_VERSION,
-  apiProviderBaseUrl: 'https://api.anthropic.com',
+  apiProviderBaseUrl: DEFAULT_API_PROVIDER?.baseUrl ?? null,
   agentId: null,
   skillId: null,
   designSystemId: null,
@@ -76,114 +84,14 @@ export interface KnownProvider {
   models?: string[];
 }
 
-// Some providers appear more than once because they expose both
-// Anthropic-compatible (/v1/messages) and OpenAI-compatible
-// (/v1/chat/completions) gateways. Keep those entries separate so the Settings
-// UI can scope quick-fill presets and model suggestions to the selected
-// protocol.
-//
-// Model lists are hand-curated from provider docs/current public presets rather
-// than fetched dynamically. To add a provider, include a user-facing label, the
-// protocol that determines request routing, the base URL, a default model, and
-// optional provider-specific model choices.
-export const KNOWN_PROVIDERS: KnownProvider[] = [
-  {
-    label: 'Anthropic (Claude)',
-    protocol: 'anthropic',
-    baseUrl: 'https://api.anthropic.com',
-    model: 'claude-sonnet-4-5',
-    models: ['claude-sonnet-4-5', 'claude-opus-4-5', 'claude-haiku-4-5'],
-  },
-  {
-    label: 'DeepSeek — Anthropic',
-    protocol: 'anthropic',
-    baseUrl: 'https://api.deepseek.com/anthropic',
-    model: 'deepseek-chat',
-    models: [
-      'deepseek-chat',
-      'deepseek-reasoner',
-      'deepseek-v4-flash',
-      'deepseek-v4-pro',
-    ],
-  },
-  {
-    label: 'MiniMax — Anthropic',
-    protocol: 'anthropic',
-    baseUrl: 'https://api.minimaxi.com/anthropic',
-    model: 'MiniMax-M2.7-highspeed',
-    models: [
-      'MiniMax-M2.7-highspeed',
-      'MiniMax-M2.7',
-      'MiniMax-M2.5-highspeed',
-      'MiniMax-M2.5',
-      'MiniMax-M2.1-highspeed',
-      'MiniMax-M2.1',
-      'MiniMax-M2',
-    ],
-  },
-  {
-    label: 'OpenAI',
-    protocol: 'openai',
-    baseUrl: 'https://api.openai.com/v1',
-    model: 'gpt-4o',
-    models: ['gpt-4o', 'gpt-4o-mini', 'o3', 'o4-mini'],
-  },
-  {
-    label: 'Azure OpenAI',
-    protocol: 'azure',
-    baseUrl: '',
-    model: '',
-    models: [],
-  },
-  {
-    label: 'Google Gemini',
-    protocol: 'google',
-    baseUrl: 'https://generativelanguage.googleapis.com',
-    model: 'gemini-2.0-flash',
-    models: ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-pro', 'gemini-1.5-flash'],
-  },
-  {
-    label: 'DeepSeek — OpenAI',
-    protocol: 'openai',
-    baseUrl: 'https://api.deepseek.com',
-    model: 'deepseek-chat',
-    models: [
-      'deepseek-chat',
-      'deepseek-reasoner',
-      'deepseek-v4-flash',
-      'deepseek-v4-pro',
-    ],
-  },
-  {
-    label: 'MiniMax — OpenAI',
-    protocol: 'openai',
-    baseUrl: 'https://api.minimaxi.com/v1',
-    model: 'MiniMax-M2.7-highspeed',
-    models: [
-      'MiniMax-M2.7-highspeed',
-      'MiniMax-M2.7',
-      'MiniMax-M2.5-highspeed',
-      'MiniMax-M2.5',
-      'MiniMax-M2.1-highspeed',
-      'MiniMax-M2.1',
-      'MiniMax-M2',
-    ],
-  },
-  {
-    label: 'MiMo (Xiaomi) — OpenAI',
-    protocol: 'openai',
-    baseUrl: 'https://token-plan-cn.xiaomimimo.com/v1',
-    model: 'mimo-v2.5-pro',
-    models: ['mimo-v2.5-pro'],
-  },
-  {
-    label: 'MiMo (Xiaomi) — Anthropic',
-    protocol: 'anthropic',
-    baseUrl: 'https://token-plan-cn.xiaomimimo.com/anthropic',
-    model: 'mimo-v2.5-pro',
-    models: ['mimo-v2.5-pro'],
-  },
-];
+export const KNOWN_PROVIDERS: KnownProvider[] = getKnownApiProviderPresets();
+
+export const SUGGESTED_MODELS_BY_PROTOCOL = {
+  anthropic: getSuggestedModelsByProtocol('anthropic'),
+  openai: getSuggestedModelsByProtocol('openai'),
+  azure: getSuggestedModelsByProtocol('azure'),
+  google: getSuggestedModelsByProtocol('google'),
+} as const;
 
 function normalizePet(input: Partial<PetConfig> | undefined): PetConfig {
   if (!input) return { ...DEFAULT_PET, custom: { ...DEFAULT_PET.custom } };
@@ -273,6 +181,25 @@ interface PublicComposioConfigResponse {
   apiKeyTail?: string;
 }
 
+export interface HermesDesktopMediaProviderConfig {
+  providerId: string;
+  apiKey: string;
+  baseUrl: string;
+}
+
+export interface HermesDesktopConfig {
+  mode?: AppConfig['mode'];
+  agentId?: string | null;
+  apiKey?: string;
+  baseUrl?: string;
+  model?: string;
+  apiProtocol?: ApiProtocol;
+  apiProviderBaseUrl?: string | null;
+  theme?: AppConfig['theme'];
+  locale?: string;
+  mediaProviders?: HermesDesktopMediaProviderConfig[];
+}
+
 export async function fetchComposioConfigFromDaemon(): Promise<AppConfig['composio'] | null> {
   try {
     const response = await fetch('/api/connectors/composio/config');
@@ -286,6 +213,57 @@ export async function fetchComposioConfigFromDaemon(): Promise<AppConfig['compos
   } catch {
     return null;
   }
+}
+
+export async function fetchHermesDesktopConfig(): Promise<HermesDesktopConfig | null> {
+  try {
+    const response = await fetch('/api/hermes-desktop-config');
+    if (!response.ok) return null;
+    const payload = await response.json() as { config?: HermesDesktopConfig | null };
+    return payload.config ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function applyHermesDesktopConfig(
+  config: AppConfig,
+  desktop: HermesDesktopConfig | null | undefined,
+): AppConfig {
+  if (!desktop) return config;
+  const next: AppConfig = { ...config };
+  const baseUrl = desktop.baseUrl?.trim() ?? '';
+  const apiKey = desktop.apiKey ?? '';
+  const model = desktop.model?.trim() ?? '';
+
+  if (desktop.mode) next.mode = desktop.mode;
+  if (desktop.agentId !== undefined) next.agentId = desktop.agentId;
+  if (desktop.apiProtocol) next.apiProtocol = desktop.apiProtocol;
+  if (baseUrl) {
+    next.baseUrl = baseUrl;
+    next.apiProviderBaseUrl = desktop.apiProviderBaseUrl ?? baseUrl;
+  }
+  if (apiKey) next.apiKey = apiKey;
+  if (model) next.model = model;
+  if (desktop.theme) next.theme = desktop.theme;
+  if (Array.isArray(desktop.mediaProviders) && desktop.mediaProviders.length > 0) {
+    const merged = { ...(next.mediaProviders ?? {}) };
+    for (const provider of desktop.mediaProviders) {
+      if (!provider?.providerId) continue;
+      merged[provider.providerId] = {
+        apiKey: provider.apiKey ?? '',
+        baseUrl: provider.baseUrl ?? '',
+      };
+    }
+    next.mediaProviders = merged;
+  }
+  if (apiKey && model && baseUrl) {
+    next.onboardingCompleted = true;
+  }
+  if (desktop.mode === 'daemon' && desktop.agentId) {
+    next.onboardingCompleted = true;
+  }
+  return next;
 }
 
 export async function syncComposioConfigToDaemon(

@@ -1044,6 +1044,8 @@ code {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 16px;
+  overflow: auto;
   z-index: 100;
   animation: fade-in 160ms ease-out;
 }
@@ -1056,6 +1058,8 @@ code {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 0;
+  max-height: calc(100vh - 32px);
   box-shadow: var(--shadow-lg);
   animation: pop-in 220ms cubic-bezier(0.21, 1.02, 0.73, 1);
 }
@@ -1090,13 +1094,18 @@ code {
   width: min(920px, calc(100vw - 48px));
   padding: 0;
   gap: 0;
+  min-height: 0;
+  height: min(820px, calc(100vh - 64px));
   max-height: calc(100vh - 64px);
+  overflow: hidden;
 }
 @media (max-height: 600px) {
-  .modal-settings { max-height: 90vh; }
+  .modal-settings {
+    height: 90vh;
+    max-height: 90vh;
+  }
 }
 .modal-settings .modal-body {
-  overflow-y: auto;
   flex: 1;
   min-height: 0;
   display: grid;
@@ -1105,6 +1114,7 @@ code {
   margin: 0;
   padding: 0;
   border-top: 1px solid var(--border);
+  overflow: hidden;
 }
 .modal-head {
   display: flex;
@@ -1149,6 +1159,9 @@ code {
   padding: 22px 12px;
   background: var(--bg-subtle);
   border-right: 1px solid var(--border);
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .settings-nav-item {
   width: 100%;
@@ -1198,8 +1211,13 @@ code {
 }
 .settings-content {
   min-width: 0;
+  min-height: 0;
+  height: 100%;
   padding: 22px var(--modal-padding);
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
   gap: 18px;

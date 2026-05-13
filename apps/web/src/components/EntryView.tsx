@@ -37,6 +37,8 @@ import { PromptTemplatePreviewModal } from './PromptTemplatePreviewModal';
 import { PromptTemplatesTab } from './PromptTemplatesTab';
 import { apiProtocolLabel } from '../utils/apiProtocol';
 
+const PRODUCT_BRAND = 'Design Center';
+
 type TopTab = 'designs' | 'examples' | 'design-systems' | 'connectors' | 'image-templates' | 'video-templates';
 
 interface Props {
@@ -452,14 +454,13 @@ export function EntryView({
           <span className="entry-brand-mark" aria-hidden>
             <img src="/logo.svg" alt="" className="brand-mark-img" draggable={false} />
           </span>
-          <div className="entry-brand-text">
-            <div className="entry-brand-title-row">
-              <span className="entry-brand-title">{t('app.brand')}</span>
-              <span className="entry-brand-pill">{t('app.brandPill')}</span>
+            <div className="entry-brand-text">
+              <div className="entry-brand-title-row">
+                <span className="entry-brand-title">{PRODUCT_BRAND}</span>
+                <span className="entry-brand-pill">{t('app.brandPill')}</span>
+              </div>
             </div>
-            <div className="entry-brand-subtitle">{t('app.brandSubtitle')}</div>
           </div>
-        </div>
         <NewProjectPanel
           skills={skills}
           designSystems={designSystems}

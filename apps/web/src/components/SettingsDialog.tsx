@@ -9,7 +9,7 @@ import {
   isCustomModel,
   renderModelOptions,
 } from './modelOptions';
-import { KNOWN_PROVIDERS } from '../state/config';
+import { KNOWN_PROVIDERS, SUGGESTED_MODELS_BY_PROTOCOL } from '../state/config';
 import {
   MAX_MAX_TOKENS,
   MIN_MAX_TOKENS,
@@ -44,6 +44,7 @@ export type SettingsSection =
 
 interface Props {
   initial: AppConfig;
+  desktopManaged?: boolean;
   agents: AgentInfo[];
   daemonLive: boolean;
   appVersionInfo: AppVersionInfo | null;
@@ -55,54 +56,6 @@ interface Props {
     options?: { throwOnError?: boolean },
   ) => AgentInfo[] | Promise<AgentInfo[] | void> | void;
 }
-
-const SUGGESTED_MODELS_BY_PROTOCOL = {
-  anthropic: [
-    'claude-opus-4-5',
-    'claude-sonnet-4-5',
-    'claude-haiku-4-5',
-    'deepseek-chat',
-    'deepseek-reasoner',
-    'deepseek-v4-flash',
-    'deepseek-v4-pro',
-    'MiniMax-M2.7-highspeed',
-    'MiniMax-M2.7',
-    'MiniMax-M2.5-highspeed',
-    'MiniMax-M2.5',
-    'MiniMax-M2.1-highspeed',
-    'MiniMax-M2.1',
-    'MiniMax-M2',
-    'mimo-v2.5-pro',
-  ],
-  openai: [
-    'gpt-4o',
-    'gpt-4o-mini',
-    'o3',
-    'o4-mini',
-    'deepseek-chat',
-    'deepseek-reasoner',
-    'deepseek-v4-flash',
-    'deepseek-v4-pro',
-    'MiniMax-M2.7-highspeed',
-    'MiniMax-M2.7',
-    'MiniMax-M2.5-highspeed',
-    'MiniMax-M2.5',
-    'MiniMax-M2.1-highspeed',
-    'MiniMax-M2.1',
-    'MiniMax-M2',
-    'mimo-v2.5-pro',
-  ],
-  azure: [
-    'gpt-4o',
-    'gpt-4o-mini',
-  ],
-  google: [
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-lite',
-    'gemini-1.5-pro',
-    'gemini-1.5-flash',
-  ],
-} as const;
 
 const API_PROTOCOL_TABS: Array<{
   id: ApiProtocol;
@@ -240,6 +193,7 @@ export function switchApiProtocolConfig(
 
 export function SettingsDialog({
   initial,
+  desktopManaged = false,
   agents,
   daemonLive,
   appVersionInfo,
@@ -251,6 +205,12 @@ export function SettingsDialog({
 }: Props) {
   const { t, locale, setLocale } = useI18n();
   const [cfg, setCfg] = useState<AppConfig>(initial);
+  const desktopSettingsTitle = locale.startsWith('zh')
+    ? '工作区设置'
+    : 'Workspace settings';
+  const desktopSettingsSubtitle = locale.startsWith('zh')
+    ? '此处仅保留 Open Design 的本地界面偏好。模型、媒体与运行时配置由桌面端统一管理。'
+    : 'Only local Open Design interface preferences live here. Model, media, and runtime configuration are managed by the desktop app.';
 
   // Revert the live theme preview when the dialog closes without saving.
   // On Save, App's useLayoutEffect fires after unmount and applies the new
@@ -267,16 +227,33 @@ export function SettingsDialog({
   }, [initial.theme]);
   const [showApiKey, setShowApiKey] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
+  const resolveInitialSection = (
+    section: SettingsSection,
+    managed: boolean,
+  ): SettingsSection => {
+    if (!managed) return section;
+    if (
+      section === 'execution' ||
+      section === 'media' ||
+      section === 'composio' ||
+      section === 'integrations' ||
+      section === 'library'
+    ) {
+      return 'appearance';
+    }
+    return section;
+  };
+  const [activeSection, setActiveSection] = useState<SettingsSection>(
+    resolveInitialSection(initialSection, desktopManaged),
+  );
+  useEffect(() => {
+    setActiveSection(resolveInitialSection(initialSection, desktopManaged));
+  }, [initialSection, desktopManaged]);
   const [languageMenuRect, setLanguageMenuRect] = useState<DOMRect | null>(null);
   const [agentRescanRunning, setAgentRescanRunning] = useState(false);
   const [agentRescanNotice, setAgentRescanNotice] =
     useState<RescanNotice | null>(null);
   const languageRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    setActiveSection(initialSection);
-  }, [initialSection]);
 
   useEffect(() => {
     if (!languageOpen) return;
@@ -413,58 +390,68 @@ export function SettingsDialog({
           ) : (
             <>
               <span className="kicker">{t('settings.kicker')}</span>
-              <h2>{t('settings.title')}</h2>
-              <p className="subtitle">{t('settings.subtitle')}</p>
+              <h2>{desktopManaged ? desktopSettingsTitle : t('settings.title')}</h2>
+              <p className="subtitle">
+                {desktopManaged ? desktopSettingsSubtitle : t('settings.subtitle')}
+              </p>
             </>
           )}
         </header>
 
         <div className="modal-body">
           <aside className="settings-sidebar" aria-label="Settings sections">
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'execution' ? ' active' : ''}`}
-              onClick={() => setActiveSection('execution')}
-            >
-              <Icon name="sliders" size={18} />
-              <span>
-                <strong>{t('settings.envConfigure')}</strong>
-                <small>{`${t('settings.localCli')} / ${t('settings.modeApiMeta')}`}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'media' ? ' active' : ''}`}
-              onClick={() => setActiveSection('media')}
-            >
-              <Icon name="image" size={18} />
-              <span>
-                <strong>{t('settings.mediaProviders')}</strong>
-                <small>Image / video / audio</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'composio' ? ' active' : ''}`}
-              onClick={() => setActiveSection('composio')}
-            >
-              <Icon name="sliders" size={18} />
-              <span>
-                <strong>Connectors</strong>
-                <small>External system connections</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'integrations' ? ' active' : ''}`}
-              onClick={() => setActiveSection('integrations')}
-            >
-              <Icon name="link" size={18} />
-              <span>
-                <strong>MCP server</strong>
-                <small>Connect your coding agent</small>
-              </span>
-            </button>
+            {!desktopManaged ? (
+              <button
+                type="button"
+                className={`settings-nav-item${activeSection === 'execution' ? ' active' : ''}`}
+                onClick={() => setActiveSection('execution')}
+              >
+                <Icon name="sliders" size={18} />
+                <span>
+                  <strong>{t('settings.envConfigure')}</strong>
+                  <small>{`${t('settings.localCli')} / ${t('settings.modeApiMeta')}`}</small>
+                </span>
+              </button>
+            ) : null}
+            {!desktopManaged ? (
+              <button
+                type="button"
+                className={`settings-nav-item${activeSection === 'media' ? ' active' : ''}`}
+                onClick={() => setActiveSection('media')}
+              >
+                <Icon name="image" size={18} />
+                <span>
+                  <strong>{t('settings.mediaProviders')}</strong>
+                  <small>Image / video / audio</small>
+                </span>
+              </button>
+            ) : null}
+            {!desktopManaged ? (
+              <button
+                type="button"
+                className={`settings-nav-item${activeSection === 'composio' ? ' active' : ''}`}
+                onClick={() => setActiveSection('composio')}
+              >
+                <Icon name="sliders" size={18} />
+                <span>
+                  <strong>Connectors</strong>
+                  <small>External system connections</small>
+                </span>
+              </button>
+            ) : null}
+            {!desktopManaged ? (
+              <button
+                type="button"
+                className={`settings-nav-item${activeSection === 'integrations' ? ' active' : ''}`}
+                onClick={() => setActiveSection('integrations')}
+              >
+                <Icon name="link" size={18} />
+                <span>
+                  <strong>MCP server</strong>
+                  <small>Connect your coding agent</small>
+                </span>
+              </button>
+            ) : null}
             <button
               type="button"
               className={`settings-nav-item${activeSection === 'language' ? ' active' : ''}`}
@@ -509,17 +496,19 @@ export function SettingsDialog({
                 <small>{t('pet.navHint')}</small>
               </span>
             </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'library' ? ' active' : ''}`}
-              onClick={() => setActiveSection('library')}
-            >
-              <Icon name="grid" size={18} />
-              <span>
-                <strong>{t('settings.library')}</strong>
-                <small>{t('settings.libraryHint')}</small>
-              </span>
-            </button>
+            {!desktopManaged ? (
+              <button
+                type="button"
+                className={`settings-nav-item${activeSection === 'library' ? ' active' : ''}`}
+                onClick={() => setActiveSection('library')}
+              >
+                <Icon name="grid" size={18} />
+                <span>
+                  <strong>{t('settings.library')}</strong>
+                  <small>{t('settings.libraryHint')}</small>
+                </span>
+              </button>
+            ) : null}
             <button
               type="button"
               className={`settings-nav-item${activeSection === 'about' ? ' active' : ''}`}
@@ -533,7 +522,7 @@ export function SettingsDialog({
             </button>
           </aside>
           <div className="settings-content">
-          {activeSection === 'execution' ? (
+          {!desktopManaged && activeSection === 'execution' ? (
             <>
               <div
                 className="seg-control"
@@ -928,10 +917,10 @@ export function SettingsDialog({
             </>
           ) : null}
 
-          {activeSection === 'media' ? <MediaProvidersSection cfg={cfg} setCfg={setCfg} /> : null}
-          {activeSection === 'integrations' ? <IntegrationsSection /> : null}
+          {!desktopManaged && activeSection === 'media' ? <MediaProvidersSection cfg={cfg} setCfg={setCfg} /> : null}
+          {!desktopManaged && activeSection === 'integrations' ? <IntegrationsSection /> : null}
 
-          {activeSection === 'composio' ? <ComposioSection cfg={cfg} setCfg={setCfg} /> : null}
+          {!desktopManaged && activeSection === 'composio' ? <ComposioSection cfg={cfg} setCfg={setCfg} /> : null}
 
           {activeSection === 'language' ? (
           <section className="settings-section">
@@ -1024,7 +1013,7 @@ export function SettingsDialog({
             <PetSettings cfg={cfg} setCfg={setCfg} />
           ) : null}
 
-          {activeSection === 'library' ? (
+          {!desktopManaged && activeSection === 'library' ? (
             <LibrarySection cfg={cfg} setCfg={setCfg} />
           ) : null}
 
@@ -1172,7 +1161,12 @@ function MediaProvidersSection({
 }) {
   const { t } = useI18n();
   const providers = MEDIA_PROVIDERS
-    .filter((p) => p.settingsVisible !== false)
+    .filter((p) => {
+      if (p.settingsVisible === false) return false;
+      const entry = cfg.mediaProviders?.[p.id];
+      const configured = Boolean(entry?.apiKey.trim() || entry?.baseUrl.trim());
+      return p.integrated || configured;
+    })
     .slice()
     .sort((a, b) => {
       const aEntry = cfg.mediaProviders?.[a.id];

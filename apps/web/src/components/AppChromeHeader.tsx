@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import { useT } from '../i18n';
 import { Icon } from './Icon';
 
+const PRODUCT_BRAND = 'Design Center';
+
 interface Props {
   actions?: ReactNode;
   children?: ReactNode;
@@ -16,12 +18,12 @@ export function AppChromeHeader({ actions, children, onBack, backLabel }: Props)
   return (
     <header className="app-chrome-header">
       <div className="app-chrome-traffic-space" aria-hidden />
-      <div className="app-chrome-brand" aria-label={t('app.brand')}>
+      <div className="app-chrome-brand" aria-label={PRODUCT_BRAND}>
         <span className="app-chrome-mark" aria-hidden>
           {/* decorative, parent has aria-label */}
           <img src="/app-icon.svg" alt="" className="brand-mark-img" draggable={false} />
         </span>
-        <span className="app-chrome-name">{t('app.brand')}</span>
+        <span className="app-chrome-name">{PRODUCT_BRAND}</span>
       </div>
       {onBack ? (
         <button

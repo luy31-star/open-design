@@ -37,13 +37,13 @@ export const zhTW: Dict = {
   'common.daysShort': '{n}天',
   'common.untitled': '未命名',
 
-  'app.brand': 'Open Design',
+  'app.brand': 'Design Center',
   'app.brandPill': '研究預覽版',
-  'app.brandSubtitle': '由 Nexu Labs 出品',
+  'app.brandSubtitle': '',
   'app.welcomeLoading': '正在載入工作區…',
 
   'settings.welcomeKicker': '歡迎',
-  'settings.welcomeTitle': '初始化 Open Design',
+  'settings.welcomeTitle': '初始化 Design Center',
   'settings.welcomeSubtitle':
     '選擇你希望使用的執行方式。後續可以隨時從頂端「設定」按鈕中修改。',
   'settings.kicker': '設定',

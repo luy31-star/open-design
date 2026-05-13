@@ -4,7 +4,7 @@ import { I18nProvider } from '../src/i18n';
 import '../src/index.css';
 
 export const metadata: Metadata = {
-  title: 'Open Design',
+  title: 'Design Center',
   icons: {
     icon: '/app-icon.svg',
     // Safari pinned-tab mask icon — Next.js's Metadata API doesn't have a
@@ -28,7 +28,7 @@ const themeInitScript = `(function(){try{var t=JSON.parse(localStorage.getItem('
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang='en' suppressHydrationWarning>
+    <html lang='zh-CN' suppressHydrationWarning>
       {/* eslint-disable-next-line @next/next/no-sync-scripts */}
       <head>
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: intentional theme-init inline script to prevent FOUC */}
