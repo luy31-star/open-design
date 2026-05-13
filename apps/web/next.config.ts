@@ -125,24 +125,25 @@ const nextConfig: NextConfig = {
       ? {
         output: 'standalone' as const,
       }
-      : !isProd
-      ? {
+      : {
         async rewrites() {
-          // In dev we run the daemon on a sibling port; proxy the app API
-          // proxy so the SPA can hit /api, /artifacts, and /frames without
-          // CORS gymnastics. SSE on /api/chat works through this rewrite
-          // because Next.js's dev server streams responses unbuffered.
+          // Both desktop server-mode (`next start`) and local dev need the
+          // SPA's same-origin /api, /artifacts, and /frames requests to reach
+          // the sibling daemon process on OD_PORT.
           return [
             { source: '/api/:path*', destination: `${DAEMON_ORIGIN}/api/:path*` },
             { source: '/artifacts/:path*', destination: `${DAEMON_ORIGIN}/artifacts/:path*` },
             { source: '/frames/:path*', destination: `${DAEMON_ORIGIN}/frames/:path*` },
           ];
         },
-        devIndicators: {
-          position: 'bottom-right',
-        },
-      }
-      : {}),
+        ...(!isProd
+          ? {
+              devIndicators: {
+                position: 'bottom-right' as const,
+              },
+            }
+          : {}),
+      }),
 };
 
 export default nextConfig;

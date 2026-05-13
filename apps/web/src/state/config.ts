@@ -379,6 +379,26 @@ interface PublicComposioConfigResponse {
   apiKeyTail?: string;
 }
 
+export interface HermesDesktopMediaProviderConfig {
+  providerId: string;
+  apiKey: string;
+  baseUrl: string;
+  model?: string;
+}
+
+export interface HermesDesktopConfig {
+  mode?: AppConfig['mode'];
+  agentId?: string | null;
+  apiKey?: string;
+  baseUrl?: string;
+  model?: string;
+  apiProtocol?: ApiProtocol;
+  apiProviderBaseUrl?: string | null;
+  theme?: AppConfig['theme'];
+  locale?: string;
+  mediaProviders?: HermesDesktopMediaProviderConfig[];
+}
+
 interface PublicMediaProviderConfigEntry {
   configured?: boolean;
   apiKeyTail?: string;
@@ -529,6 +549,59 @@ export async function fetchMediaProvidersFromDaemon(): Promise<DaemonMediaProvid
   } catch {
     return { status: 'error' };
   }
+}
+
+export async function fetchHermesDesktopConfig(): Promise<HermesDesktopConfig | null> {
+  try {
+    const response = await fetch('/api/hermes-desktop-config');
+    if (!response.ok) return null;
+    const payload = await response.json() as { config?: HermesDesktopConfig | null };
+    return payload.config ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function applyHermesDesktopConfig(
+  config: AppConfig,
+  desktop: HermesDesktopConfig | null | undefined,
+): AppConfig {
+  if (!desktop) return config;
+  const next: AppConfig = { ...config };
+  const baseUrl = desktop.baseUrl?.trim() ?? '';
+  const apiKey = desktop.apiKey ?? '';
+  const model = desktop.model?.trim() ?? '';
+
+  if (desktop.mode) next.mode = desktop.mode;
+  if (desktop.agentId !== undefined) next.agentId = desktop.agentId;
+  if (desktop.apiProtocol) next.apiProtocol = desktop.apiProtocol;
+  if (baseUrl) {
+    next.baseUrl = baseUrl;
+    next.apiProviderBaseUrl = desktop.apiProviderBaseUrl ?? baseUrl;
+  }
+  if (apiKey) next.apiKey = apiKey;
+  if (model) next.model = model;
+  if (desktop.theme) next.theme = desktop.theme;
+  if (Array.isArray(desktop.mediaProviders) && desktop.mediaProviders.length > 0) {
+    const merged = { ...(next.mediaProviders ?? {}) };
+    for (const provider of desktop.mediaProviders) {
+      if (!provider?.providerId) continue;
+      merged[provider.providerId] = {
+        ...(merged[provider.providerId] ?? {}),
+        apiKey: provider.apiKey ?? '',
+        baseUrl: provider.baseUrl ?? '',
+        ...(provider.model ? { model: provider.model } : {}),
+      };
+    }
+    next.mediaProviders = merged;
+  }
+  if (apiKey && model && baseUrl) {
+    next.onboardingCompleted = true;
+  }
+  if (desktop.mode === 'daemon' && desktop.agentId) {
+    next.onboardingCompleted = true;
+  }
+  return next;
 }
 
 export async function syncComposioConfigToDaemon(

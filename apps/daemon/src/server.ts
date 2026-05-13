@@ -1194,6 +1194,9 @@ const ARTIFACTS_DIR = path.join(RUNTIME_DATA_DIR, 'artifacts');
 // read path so project-membership, size, and CSP guards cannot be bypassed.
 const CRITIQUE_ARTIFACTS_DIR = path.join(RUNTIME_DATA_DIR, 'critique-artifacts');
 const PROJECTS_DIR = path.join(RUNTIME_DATA_DIR, 'projects');
+const HERMES_DESKTOP_BRIDGE_URL = String(
+  process.env.HERMES_DESKTOP_BRIDGE_URL || '',
+).trim().replace(/\/+$/, '');
 const USER_SKILLS_DIR = path.join(RUNTIME_DATA_DIR, 'skills');
 const USER_DESIGN_SYSTEMS_DIR = path.join(RUNTIME_DATA_DIR, 'design-systems');
 const PLUGIN_REGISTRY_ROOTS = registryRootsForDataDir(RUNTIME_DATA_DIR);
@@ -1306,6 +1309,17 @@ async function refreshAndPersistToken(dataDir, serverId, current) {
 
 const activeChatAgentEventSinks = new Map();
 const activeProjectEventSinks = new Map();
+
+async function readHermesDesktopConfigFromBridge() {
+  if (!HERMES_DESKTOP_BRIDGE_URL) return null;
+  const response = await fetch(
+    `${HERMES_DESKTOP_BRIDGE_URL}/creation-studio/config`,
+  );
+  if (!response.ok) {
+    throw new Error(`desktop bridge returned ${response.status}`);
+  }
+  return response.json();
+}
 
 function emitChatAgentEvent(runId, payload) {
   const sink = activeChatAgentEventSinks.get(runId);
@@ -7985,6 +7999,20 @@ export async function startServer({
     } catch (err) {
       res
         .status(500)
+        .json({ error: String(err && err.message ? err.message : err) });
+    }
+  });
+
+  app.get('/api/hermes-desktop-config', async (req, res) => {
+    if (!isLocalSameOrigin(req, resolvedPort)) {
+      return res.status(403).json({ error: 'cross-origin request rejected' });
+    }
+    try {
+      const config = await readHermesDesktopConfigFromBridge();
+      res.json({ config });
+    } catch (err) {
+      res
+        .status(502)
         .json({ error: String(err && err.message ? err.message : err) });
     }
   });

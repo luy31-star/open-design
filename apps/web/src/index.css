@@ -2521,6 +2521,8 @@ a.avatar-item:visited {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 16px;
+  overflow: auto;
   z-index: 100;
   animation: fade-in 160ms ease-out;
 }
@@ -2534,6 +2536,8 @@ a.avatar-item:visited {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 0;
+  max-height: calc(100vh - 32px);
   box-shadow: var(--shadow-lg);
   animation: pop-in 220ms cubic-bezier(0.21, 1.02, 0.73, 1);
 }
@@ -2677,13 +2681,14 @@ a.avatar-item:visited {
      pad out with empty space inside `.settings-content`, long sections
      scroll internally. Keeps the dialog from jumping in size as the user
      switches sidebar items. */
-  height: min(720px, calc(100vh - 64px));
+  height: min(820px, calc(100vh - 64px));
   padding: 0;
   gap: 0;
   /* Anchor for the absolutely-positioned `.settings-chrome` strip
      (close button + autosave indicator). Without this the chrome
      would escape to the viewport on long-scrolling sections. */
   position: relative;
+  overflow: hidden;
 }
 @media (max-height: 600px) {
   .modal-settings { height: 90vh; }
@@ -3159,6 +3164,7 @@ a.avatar-item:visited {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 /* Sidebar items follow the ChatGPT-style settings rhythm: single line,
    icon + label only, gray pill fill on active. The `<small>` description
@@ -3215,12 +3221,15 @@ a.avatar-item:visited {
 .settings-content {
   min-width: 0;
   min-height: 0;
+  height: 100%;
   /* Top inset matches `.settings-sidebar`'s `padding-top: 16` so the first
      content row (the Local CLI / BYOK pill) sits level with the first
      sidebar nav-item across the gutter. */
   padding: 16px var(--modal-padding) 22px;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
   gap: 18px;

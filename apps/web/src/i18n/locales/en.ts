@@ -58,13 +58,13 @@ export const en: Dict = {
   'plugins.availableDetails.permissions': 'Permissions',
   'plugins.availableDetails.capabilitySummary': 'Capability summary',
 
-  'app.brand': 'Open Design',
+  'app.brand': 'Design Center',
   'app.brandPill': 'Research Preview',
-  'app.brandSubtitle': 'by Nexu Labs',
+  'app.brandSubtitle': '',
   'app.welcomeLoading': 'Loading workspace…',
 
   'settings.welcomeKicker': 'Welcome',
-  'settings.welcomeTitle': 'Set up Open Design',
+  'settings.welcomeTitle': 'Set up Design Center',
   'settings.welcomeSubtitle':
     "Pick how you'd like to run generations. You can change this any time from the Settings button in the top bar.",
   'settings.kicker': 'Settings',

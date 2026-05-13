@@ -58,13 +58,13 @@ export const zhCN: Dict = {
   'plugins.availableDetails.permissions': '权限',
   'plugins.availableDetails.capabilitySummary': '能力摘要',
 
-  'app.brand': 'Open Design',
+  'app.brand': 'Design Center',
   'app.brandPill': '研究预览版',
-  'app.brandSubtitle': '由 Nexu Labs 出品',
+  'app.brandSubtitle': '',
   'app.welcomeLoading': '正在加载工作区…',
 
   'settings.welcomeKicker': '欢迎',
-  'settings.welcomeTitle': '初始化 Open Design',
+  'settings.welcomeTitle': '初始化 Design Center',
   'settings.welcomeSubtitle':
     '选择你希望使用的执行方式。后续可以随时从顶部「设置」按钮中修改。',
   'settings.kicker': '设置',

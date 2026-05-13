@@ -1,4 +1,14 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from 'react';
 import { useAnalytics } from './analytics/provider';
 import { trackAppLaunch, trackProjectCreateResult } from './analytics/events';
 import { detectClientType, detectLaunchSource } from './analytics/identity';
@@ -46,7 +56,9 @@ import {
   fetchMediaProvidersFromDaemon,
   hasAnyConfiguredProvider,
   fetchComposioConfigFromDaemon,
+  fetchHermesDesktopConfig,
   loadConfig,
+  applyHermesDesktopConfig,
   mergeDaemonConfig,
   mergeDaemonMediaProviders,
   saveConfig,
@@ -94,6 +106,21 @@ export function shouldSyncMediaProvidersOnSave(
   options?: { force?: boolean },
 ): boolean {
   return Boolean(options?.force) || hasAnyConfiguredProvider(mediaProviders);
+}
+
+function mergeHermesDesktopConfig(
+  setDesktopManaged: (value: boolean) => void,
+  setConfig: Dispatch<SetStateAction<AppConfig>>,
+  desktopConfig: Awaited<ReturnType<typeof fetchHermesDesktopConfig>>,
+): boolean {
+  if (!desktopConfig) return false;
+  setDesktopManaged(true);
+  setConfig((prev) => applyHermesDesktopConfig({ ...prev }, desktopConfig));
+  return true;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 function normalizeSavedComposioConfig(config: AppConfig['composio']): AppConfig['composio'] {
@@ -164,6 +191,19 @@ export function resolveSettingsCloseConfig(
   return base.onboardingCompleted ? base : { ...base, onboardingCompleted: true };
 }
 
+function readHermesEmbedOverrides() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    theme: params.get('hermesTheme'),
+    accent: params.get('hermesAccent'),
+    bg: params.get('hermesBg'),
+    panel: params.get('hermesPanel'),
+    border: params.get('hermesBorder'),
+    text: params.get('hermesText'),
+    textMuted: params.get('hermesTextMuted'),
+  };
+}
+
 export function App() {
   const { t } = useI18n();
   const clientType = useMemo(() => detectClientType(), []);
@@ -176,6 +216,7 @@ export function App() {
   const [settingsWelcome, setSettingsWelcome] = useState(false);
   const [settingsInitialSection, setSettingsInitialSection] = useState<SettingsSection>('execution');
   const [integrationInitialTab, setIntegrationInitialTab] = useState<IntegrationTab>('mcp');
+  const [desktopManaged, setDesktopManaged] = useState(false);
   const [daemonLive, setDaemonLive] = useState(false);
   const [agents, setAgents] = useState<AgentInfo[]>([]);
   // Functional skills (capabilities the agent invokes mid-task) — stays
@@ -274,10 +315,34 @@ export function App() {
   // live theme switch in Settings applies atomically — no 1-frame flash of
   // the old theme. Safe here because the component tree is ssr:false.
   useLayoutEffect(() => {
+    const embed = readHermesEmbedOverrides();
+    const embedTheme =
+      embed.theme === 'light' || embed.theme === 'dark' || embed.theme === 'system'
+        ? embed.theme
+        : null;
     applyAppearanceToDocument({
-      theme: config.theme ?? 'system',
+      theme: embedTheme ?? config.theme ?? 'system',
       accentColor: config.accentColor,
     });
+
+    const rootStyle = document.documentElement.style;
+    const variableMap: Array<[string | null, string[]]> = [
+      [embed.accent, ['--accent', '--accent-strong']],
+      [embed.bg, ['--bg', '--bg-app']],
+      [embed.panel, ['--bg-panel', '--bg-elevated', '--bg-subtle']],
+      [embed.border, ['--border', '--border-strong']],
+      [embed.text, ['--text', '--text-strong']],
+      [embed.textMuted, ['--text-muted', '--text-soft']],
+    ];
+    for (const [value, variables] of variableMap) {
+      for (const variable of variables) {
+        if (value) {
+          rootStyle.setProperty(variable, value);
+        } else {
+          rootStyle.removeProperty(variable);
+        }
+      }
+    }
   }, [config.theme, config.accentColor]);
 
   // Tell the daemon what the user is currently looking at, so the MCP
@@ -394,10 +459,12 @@ export function App() {
         fetchDaemonConfig(),
         fetchComposioConfigFromDaemon(),
         fetchMediaProvidersFromDaemon(),
+        fetchHermesDesktopConfig(),
       ]).then(([
         daemonConfig,
         daemonComposioConfig,
         daemonMediaProvidersResult,
+        hermesDesktopConfig,
       ]) => {
         if (cancelled) return;
         const daemonMediaProvidersLoaded =
@@ -411,13 +478,17 @@ export function App() {
             ? t('settings.mediaProviderLoadError')
             : null,
         );
+        mergeHermesDesktopConfig(setDesktopManaged, setConfig, hermesDesktopConfig);
         setConfig((prev) => {
+          const base = hermesDesktopConfig
+            ? applyHermesDesktopConfig({ ...prev }, hermesDesktopConfig)
+            : prev;
           const migratedLocalMediaProviders = shouldSyncLocalMediaProvidersToDaemon(
-            prev.mediaProviders,
+            base.mediaProviders,
             daemonMediaProvidersLoaded,
           );
           const next = mergeDaemonMediaProviders(
-            mergeDaemonConfig(prev, daemonConfig),
+            mergeDaemonConfig(base, daemonConfig),
             daemonMediaProvidersLoaded,
           );
           const hasLocalComposioKey = Boolean(next.composio?.apiKey?.trim());
@@ -500,6 +571,29 @@ export function App() {
       return next;
     });
   }, [daemonConfigLoaded, dsLoading, designSystems, config.designSystemId]);
+
+  useEffect(() => {
+    if (desktopManaged) return;
+    let cancelled = false;
+    let attempts = 0;
+
+    const poll = async () => {
+      while (!cancelled && attempts < 30) {
+        attempts += 1;
+        const desktopConfig = await fetchHermesDesktopConfig();
+        if (cancelled) return;
+        if (mergeHermesDesktopConfig(setDesktopManaged, setConfig, desktopConfig)) {
+          return;
+        }
+        await sleep(1000);
+      }
+    };
+
+    void poll();
+    return () => {
+      cancelled = true;
+    };
+  }, [desktopManaged]);
 
   // One-shot self-healing migration for pets adopted before the
   // overlay learned atlas-row switching. If the stored pet is a
@@ -1331,6 +1425,7 @@ export function App() {
       {settingsOpen ? (
         <SettingsDialog
           initial={config}
+          desktopManaged={desktopManaged}
           agents={agents}
           daemonLive={daemonLive}
           appVersionInfo={appVersionInfo}

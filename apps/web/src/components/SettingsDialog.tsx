@@ -129,6 +129,7 @@ export type SettingsSection =
 
 interface Props {
   initial: AppConfig;
+  desktopManaged?: boolean;
   agents: AgentInfo[];
   daemonLive: boolean;
   appVersionInfo: AppVersionInfo | null;
@@ -658,6 +659,7 @@ export function switchApiProtocolConfig(
 
 export function SettingsDialog({
   initial,
+  desktopManaged = false,
   agents,
   daemonLive,
   appVersionInfo,
@@ -676,6 +678,12 @@ export function SettingsDialog({
   const { t, locale, setLocale } = useI18n();
   const analytics = useAnalytics();
   const [cfg, setCfg] = useState<AppConfig>(initial);
+  const desktopSettingsTitle = locale.startsWith('zh')
+    ? '工作区设置'
+    : 'Workspace settings';
+  const desktopSettingsSubtitle = locale.startsWith('zh')
+    ? '此处仅保留 Open Design 的本地界面偏好。模型、媒体与运行时配置由桌面端统一管理。'
+    : 'Only local Open Design interface preferences live here. Model, media, and runtime configuration are managed by the desktop app.';
   const lastSavedAppearanceRef = useRef({
     theme: initial.theme ?? 'system',
     accentColor: resolveAccentColor(initial.accentColor),
@@ -703,7 +711,25 @@ export function SettingsDialog({
     };
   }, []);
   const [showApiKey, setShowApiKey] = useState(false);
-  const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
+  const resolveInitialSection = (
+    section: SettingsSection,
+    managed: boolean,
+  ): SettingsSection => {
+    if (!managed) return section;
+    if (
+      section === 'execution' ||
+      section === 'media' ||
+      section === 'composio' ||
+      section === 'integrations' ||
+      section === 'library'
+    ) {
+      return 'appearance';
+    }
+    return section;
+  };
+  const [activeSection, setActiveSection] = useState<SettingsSection>(
+    resolveInitialSection(initialSection, desktopManaged),
+  );
   // Scroll the right-hand content pane back to the top whenever the user
   // picks a different settings section. Without this, switching from a
   // long section the user had scrolled (e.g. Library) into a short one
@@ -736,6 +762,10 @@ export function SettingsDialog({
   >(() => new Set());
   const [versionChecking, setVersionChecking] = useState(false);
   const [aboutToast, setAboutToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    setActiveSection(resolveInitialSection(initialSection, desktopManaged));
+  }, [desktopManaged, initialSection]);
 
   const handleInstallLatest = useCallback(async () => {
     if (versionChecking || !appVersionInfo) return;
@@ -1570,8 +1600,10 @@ export function SettingsDialog({
             <>
               <span className="kicker">{t('settings.kicker')}</span>
               <div className="modal-head-line">
-                <h2>{activeHeader.title}</h2>
-                <p className="subtitle">{activeHeader.subtitle}</p>
+                <h2>{desktopManaged ? desktopSettingsTitle : activeHeader.title}</h2>
+                <p className="subtitle">
+                  {desktopManaged ? desktopSettingsSubtitle : activeHeader.subtitle}
+                </p>
               </div>
             </>
           )}
@@ -1579,17 +1611,19 @@ export function SettingsDialog({
 
         <div className="modal-body">
           <aside className="settings-sidebar" aria-label="Settings sections">
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'execution' ? ' active' : ''}`}
-              onClick={() => setActiveSection('execution')}
-            >
-              <Icon name="sliders" size={18} />
-              <span>
-                <strong>{t('settings.envConfigure')}</strong>
-                <small>{`${t('settings.localCli')} / ${t('settings.modeApiMeta')}`}</small>
-              </span>
-            </button>
+            {!desktopManaged ? (
+              <button
+                type="button"
+                className={`settings-nav-item${activeSection === 'execution' ? ' active' : ''}`}
+                onClick={() => setActiveSection('execution')}
+              >
+                <Icon name="sliders" size={18} />
+                <span>
+                  <strong>{t('settings.envConfigure')}</strong>
+                  <small>{`${t('settings.localCli')} / ${t('settings.modeApiMeta')}`}</small>
+                </span>
+              </button>
+            ) : null}
             <button
               type="button"
               className={`settings-nav-item${activeSection === 'memory' ? ' active' : ''}`}
@@ -1601,17 +1635,19 @@ export function SettingsDialog({
                 <small>{t('settings.memoryHint')}</small>
               </span>
             </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'media' ? ' active' : ''}`}
-              onClick={() => setActiveSection('media')}
-            >
-              <Icon name="image" size={18} />
-              <span>
-                <strong>{t('settings.mediaProviders')}</strong>
-                <small>Image / video / audio</small>
-              </span>
-            </button>
+            {!desktopManaged ? (
+              <button
+                type="button"
+                className={`settings-nav-item${activeSection === 'media' ? ' active' : ''}`}
+                onClick={() => setActiveSection('media')}
+              >
+                <Icon name="image" size={18} />
+                <span>
+                  <strong>{t('settings.mediaProviders')}</strong>
+                  <small>Image / video / audio</small>
+                </span>
+              </button>
+            ) : null}
             <button
               type="button"
               className={`settings-nav-item${activeSection === 'skills' ? ' active' : ''}`}
@@ -1634,28 +1670,32 @@ export function SettingsDialog({
                 <small>{t('settings.externalMcpHint')}</small>
               </span>
             </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'composio' ? ' active' : ''}`}
-              onClick={() => setActiveSection('composio')}
-            >
-              <Icon name="sliders" size={18} />
-              <span>
-                <strong>{t('connectors.title')}</strong>
-                <small>{t('settings.connectorsNavHint')}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'integrations' ? ' active' : ''}`}
-              onClick={() => setActiveSection('integrations')}
-            >
-              <Icon name="link" size={18} />
-              <span>
-                <strong>{t('settings.mcpServerTitle')}</strong>
-                <small>{t('settings.mcpServerHint')}</small>
-              </span>
-            </button>
+            {!desktopManaged ? (
+              <button
+                type="button"
+                className={`settings-nav-item${activeSection === 'composio' ? ' active' : ''}`}
+                onClick={() => setActiveSection('composio')}
+              >
+                <Icon name="sliders" size={18} />
+                <span>
+                  <strong>{t('connectors.title')}</strong>
+                  <small>{t('settings.connectorsNavHint')}</small>
+                </span>
+              </button>
+            ) : null}
+            {!desktopManaged ? (
+              <button
+                type="button"
+                className={`settings-nav-item${activeSection === 'integrations' ? ' active' : ''}`}
+                onClick={() => setActiveSection('integrations')}
+              >
+                <Icon name="link" size={18} />
+                <span>
+                  <strong>{t('settings.mcpServerTitle')}</strong>
+                  <small>{t('settings.mcpServerHint')}</small>
+                </span>
+              </button>
+            ) : null}
             <button
               type="button"
               className={`settings-nav-item${activeSection === 'language' ? ' active' : ''}`}
@@ -1746,7 +1786,7 @@ export function SettingsDialog({
             </button>
           </aside>
           <div className="settings-content" ref={settingsContentRef}>
-          {activeSection === 'execution' ? (
+          {!desktopManaged && activeSection === 'execution' ? (
             <>
               <div
                 className="seg-control"
@@ -2663,7 +2703,7 @@ export function SettingsDialog({
             </>
           ) : null}
 
-          {activeSection === 'media' ? (
+          {!desktopManaged && activeSection === 'media' ? (
             <MediaProvidersSection
               cfg={cfg}
               setCfg={setCfg}
@@ -2674,11 +2714,11 @@ export function SettingsDialog({
               }}
             />
           ) : null}
-          {activeSection === 'integrations' ? <IntegrationsSection /> : null}
+          {!desktopManaged && activeSection === 'integrations' ? <IntegrationsSection /> : null}
 
           {activeSection === 'mcpClient' ? <McpClientSection /> : null}
 
-          {activeSection === 'composio' ? (
+          {!desktopManaged && activeSection === 'composio' ? (
             <ConnectorSection
               cfg={cfg}
               setCfg={setCfg}
