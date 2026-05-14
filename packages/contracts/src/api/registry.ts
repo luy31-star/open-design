@@ -10,6 +10,7 @@ export interface AgentInfo {
   available: boolean;
   path?: string;
   version?: string | null;
+  issue?: string | null;
   models?: AgentModelOption[];
   reasoningOptions?: AgentModelOption[];
 }

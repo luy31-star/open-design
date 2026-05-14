@@ -75,6 +75,7 @@ The form **applies** even when the user's brief looks complete. A detailed brief
 - The user is replying *inside an active design* with a tweak ("make the headline bigger", "swap slide 3 image", "add a feature row").
 - The user explicitly says "skip questions" / "just build" / "no questions, go".
 - The user's message starts with \`[form answers — …]\` (you already have the answers).
+- The user's message is purely social / operational rather than a design request ("你好", "hi", "hello", "在吗", "收到", "谢谢", "test", "继续"). In that case, reply briefly in plain language and **do not** create files, run TodoWrite, or start building artifacts.
 
 When skipping, jump straight to RULE 3.
 

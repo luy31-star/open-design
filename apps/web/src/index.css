@@ -1843,7 +1843,7 @@ code {
   width: 28px;
   z-index: 1;
   pointer-events: none;
-  opacity: 0;
+  opacity: 0.72;
   transition: opacity 120ms ease;
 }
 .newproj-tabs-shell::before {
@@ -4758,10 +4758,11 @@ button.connector-action.is-loading {
   color: var(--text-muted);
   font-size: 16px;
   border-radius: 4px;
-  opacity: 0;
+  opacity: 0.72;
   transition: opacity 120ms ease;
 }
 .df-row:hover .df-row-menu { opacity: 1; }
+.df-row:focus-within .df-row-menu { opacity: 1; }
 .df-row-menu:hover { background: var(--border); color: var(--text); }
 .df-section-more {
   margin: 6px 20px 10px;
@@ -8185,10 +8186,11 @@ body.entry-resizing { cursor: col-resize; user-select: none; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
+  opacity: 0.72;
   transition: opacity 120ms ease, background-color 120ms ease, color 120ms ease;
 }
 .chat-conv-item:hover .chat-conv-item-del { opacity: 1; }
+.chat-conv-item:focus-within .chat-conv-item-del { opacity: 1; }
 .chat-conv-item-del:hover { background: var(--red-bg); color: var(--red); }
 
 /* ============================================================

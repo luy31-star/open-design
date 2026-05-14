@@ -236,8 +236,8 @@ export function applyHermesDesktopConfig(
   const apiKey = desktop.apiKey ?? '';
   const model = desktop.model?.trim() ?? '';
 
-  if (desktop.mode) next.mode = desktop.mode;
-  if (desktop.agentId !== undefined) next.agentId = desktop.agentId;
+  next.mode = 'daemon';
+  next.agentId = desktop.agentId ?? 'hermes';
   if (desktop.apiProtocol) next.apiProtocol = desktop.apiProtocol;
   if (baseUrl) {
     next.baseUrl = baseUrl;

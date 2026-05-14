@@ -172,16 +172,20 @@ test('codex args do not include the literal `-` stdin sentinel (regression of #2
 test('live artifact MCP discovery is limited to mature ACP agents', () => {
   assert.deepEqual(buildLiveArtifactsMcpServersForAgent(hermes), [
     {
+      type: 'stdio',
       name: 'open-design-live-artifacts',
       command: 'od',
       args: ['mcp', 'live-artifacts'],
+      env: [],
     },
   ]);
   assert.deepEqual(buildLiveArtifactsMcpServersForAgent(kimi), [
     {
+      type: 'stdio',
       name: 'open-design-live-artifacts',
       command: 'od',
       args: ['mcp', 'live-artifacts'],
+      env: [],
     },
   ]);
 
@@ -203,9 +207,11 @@ test('live artifact MCP discovery can use daemon-resolved CLI command', () => {
     }),
     [
       {
+        type: 'stdio',
         name: 'open-design-live-artifacts',
         command: process.execPath,
         args: ['/workspace/apps/daemon/dist/cli.js', 'mcp', 'live-artifacts'],
+        env: [],
       },
     ],
   );

@@ -11,6 +11,10 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
 import path from 'node:path';
 
+const DESKTOP_LOCKED_AGENT_ID = process.env.HERMES_DESKTOP_BRIDGE_URL
+  ? 'hermes'
+  : null;
+
 export interface AgentModelPrefs {
   model?: string;
   reasoning?: string;
@@ -102,6 +106,21 @@ function filterAllowedKeys(obj: Record<string, unknown>): AppConfigPrefs {
   for (const key of Object.keys(obj)) {
     if (ALLOWED_KEYS.has(key as keyof AppConfigPrefs)) {
       applyConfigValue(result, key as keyof AppConfigPrefs, obj[key]);
+    }
+  }
+  if (DESKTOP_LOCKED_AGENT_ID) {
+    result.agentId = DESKTOP_LOCKED_AGENT_ID;
+    if (
+      result.agentModels &&
+      typeof result.agentModels === 'object' &&
+      !Array.isArray(result.agentModels)
+    ) {
+      const hermesOnly = (result.agentModels as Record<string, AgentModelPrefs>)[
+        DESKTOP_LOCKED_AGENT_ID
+      ];
+      result.agentModels = hermesOnly
+        ? { [DESKTOP_LOCKED_AGENT_ID]: hermesOnly }
+        : {};
     }
   }
   return result as AppConfigPrefs;

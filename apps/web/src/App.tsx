@@ -388,21 +388,23 @@ export function App() {
 
   const handleModeChange = useCallback(
     (mode: AppConfig['mode']) => {
+      if (desktopManaged) return;
       const next = { ...config, mode };
       saveConfig(next);
       setConfig(next);
     },
-    [config],
+    [config, desktopManaged],
   );
 
   const handleAgentChange = useCallback(
     (agentId: string) => {
+      if (desktopManaged) return;
       const next = { ...config, agentId };
       saveConfig(next);
       void syncConfigToDaemon(next);
       setConfig(next);
     },
-    [config],
+    [config, desktopManaged],
   );
 
   const handleAgentModelChange = useCallback(
@@ -637,6 +639,7 @@ export function App() {
     <>
       {activeProject ? (
         <ProjectView
+          desktopManaged={desktopManaged}
           key={activeProject.id}
           project={activeProject}
           routeFileName={route.kind === 'project' ? route.fileName : null}

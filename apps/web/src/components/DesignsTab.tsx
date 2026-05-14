@@ -60,6 +60,7 @@ export function DesignsTab({
   const [filter, setFilter] = useState('');
   const [sub, setSub] = useState<SubTab>('recent');
   const [liveArtifactsByProject, setLiveArtifactsByProject] = useState<Record<string, LiveArtifactSummary[]>>({});
+  const [pendingDeleteKey, setPendingDeleteKey] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>(() => {
     if (typeof window === 'undefined') return 'grid';
     try {
@@ -120,6 +121,12 @@ export function DesignsTab({
     });
   }, [projects, liveArtifactsByProject, filter, sub]);
 
+  useEffect(() => {
+    if (!pendingDeleteKey) return;
+    const timer = window.setTimeout(() => setPendingDeleteKey(null), 3000);
+    return () => window.clearTimeout(timer);
+  }, [pendingDeleteKey]);
+
   const filteredProjects = useMemo(
     () => filtered.filter((item): item is Extract<DesignListItem, { type: 'project' }> => item.type === 'project'),
     [filtered],
@@ -128,7 +135,12 @@ export function DesignsTab({
   const skillName = (id: string | null) => skills.find((s) => s.id === id)?.name ?? '';
   const dsName = (id: string | null) => designSystems.find((d) => d.id === id)?.title ?? '';
   const handleDeleteLiveArtifact = async (projectId: string, artifact: LiveArtifactSummary) => {
-    if (!confirm(`${t('common.delete')} "${artifact.title}"?`)) return;
+    const deleteKey = `artifact:${projectId}:${artifact.id}`;
+    if (pendingDeleteKey !== deleteKey) {
+      setPendingDeleteKey(deleteKey);
+      return;
+    }
+    setPendingDeleteKey(null);
     const ok = await deleteLiveArtifact(projectId, artifact.id);
     if (!ok) return;
     setLiveArtifactsByProject((current) => ({
@@ -189,6 +201,8 @@ export function DesignsTab({
             const ds = dsName(p.designSystemId);
             if (item.type === 'live-artifact') {
               const artifact = item.liveArtifact;
+              const deleteKey = `artifact:${p.id}:${artifact.id}`;
+              const confirmDelete = pendingDeleteKey === deleteKey;
               return (
                 <div
                   key={`live:${artifact.id}`}
@@ -206,14 +220,14 @@ export function DesignsTab({
                   <button
                     type="button"
                     className="design-card-close"
-                    title={t('common.delete')}
+                    title={confirmDelete ? t('common.delete') : t('designs.deleteTitle')}
                     aria-label={`${t('common.delete')} ${artifact.title}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       void handleDeleteLiveArtifact(p.id, artifact);
                     }}
                   >
-                    <Icon name="close" size={12} />
+                    {confirmDelete ? '!' : <Icon name="close" size={12} />}
                   </button>
                   <div className="design-card-thumb live-artifact-thumb" aria-hidden>
                     <span className="live-artifact-thumb-glyph">●</span>
@@ -235,6 +249,8 @@ export function DesignsTab({
 
             const liveCount = liveArtifactsByProject[p.id]?.length ?? 0;
             const status = p.status?.value ?? 'not_started';
+            const deleteKey = `project:${p.id}`;
+            const confirmDelete = pendingDeleteKey === deleteKey;
             return (
               <div
                 key={p.id}
@@ -251,14 +267,19 @@ export function DesignsTab({
               >
                 <button
                   className="design-card-close"
-                  title={t('designs.deleteTitle')}
+                  title={confirmDelete ? t('common.delete') : t('designs.deleteTitle')}
                   aria-label={t('designs.deleteAria', { name: p.name })}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (confirm(t('designs.deleteConfirm', { name: p.name }))) onDelete(p.id);
+                    if (!confirmDelete) {
+                      setPendingDeleteKey(deleteKey);
+                      return;
+                    }
+                    setPendingDeleteKey(null);
+                    onDelete(p.id);
                   }}
                 >
-                  <Icon name="close" size={12} />
+                  {confirmDelete ? '!' : <Icon name="close" size={12} />}
                 </button>
                 <div className="design-card-thumb" aria-hidden>
                   {liveCount > 0 ? <span className="design-live-count">{t('designs.liveCount', { n: liveCount })}</span> : null}
@@ -294,6 +315,8 @@ export function DesignsTab({
                     colProjects.map(({ project: p }) => {
                       const skill = skillName(p.skillId);
                       const ds = dsName(p.designSystemId);
+                      const deleteKey = `project:${p.id}`;
+                      const confirmDelete = pendingDeleteKey === deleteKey;
                       return (
                         <div
                           key={p.id}
@@ -310,14 +333,19 @@ export function DesignsTab({
                         >
                           <button
                             className="design-card-close"
-                            title={t('designs.deleteTitle')}
+                            title={confirmDelete ? t('common.delete') : t('designs.deleteTitle')}
                             aria-label={t('designs.deleteAria', { name: p.name })}
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (confirm(t('designs.deleteConfirm', { name: p.name }))) onDelete(p.id);
+                              if (!confirmDelete) {
+                                setPendingDeleteKey(deleteKey);
+                                return;
+                              }
+                              setPendingDeleteKey(null);
+                              onDelete(p.id);
                             }}
                           >
-                            <Icon name="close" size={12} />
+                            {confirmDelete ? '!' : <Icon name="close" size={12} />}
                           </button>
                           <div className="design-kanban-card-name" title={p.name}>{p.name}</div>
                           <div className="design-kanban-card-meta">

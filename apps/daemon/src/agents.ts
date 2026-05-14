@@ -362,6 +362,7 @@ export const AGENT_DEFS = [
     name: 'Hermes',
     bin: 'hermes',
     versionArgs: ['--version'],
+    requireSuccessfulModelProbe: true,
     fetchModels: async (resolvedBin) =>
       detectAcpModels({
         bin: resolvedBin,
@@ -824,13 +825,18 @@ async function fetchModels(def, resolvedBin) {
   if (typeof def.fetchModels === 'function') {
     try {
       const parsed = await def.fetchModels(resolvedBin);
-      if (!parsed || parsed.length === 0) return def.fallbackModels;
-      return parsed;
-    } catch {
-      return def.fallbackModels;
+      if (!parsed || parsed.length === 0) {
+        return { models: def.fallbackModels, issue: null };
+      }
+      return { models: parsed, issue: null };
+    } catch (err) {
+      return {
+        models: def.fallbackModels,
+        issue: err instanceof Error ? err.message : String(err),
+      };
     }
   }
-  if (!def.listModels) return def.fallbackModels;
+  if (!def.listModels) return { models: def.fallbackModels, issue: null };
   try {
     const { stdout } = await execFileP(resolvedBin, def.listModels.args, {
       timeout: def.listModels.timeoutMs ?? 5000,
@@ -843,10 +849,15 @@ async function fetchModels(def, resolvedBin) {
     // Empty / null parse result means the CLI didn't actually return a
     // usable list (e.g. cursor-agent's "No models available"); fall back
     // to the static hint so the picker isn't stuck on Default-only.
-    if (!parsed || parsed.length === 0) return def.fallbackModels;
-    return parsed;
-  } catch {
-    return def.fallbackModels;
+    if (!parsed || parsed.length === 0) {
+      return { models: def.fallbackModels, issue: null };
+    }
+    return { models: parsed, issue: null };
+  } catch (err) {
+    return {
+      models: def.fallbackModels,
+      issue: err instanceof Error ? err.message : String(err),
+    };
   }
 }
 
@@ -886,13 +897,15 @@ async function probe(def) {
     }
     agentCapabilities.set(def.id, caps);
   }
-  const models = await fetchModels(def, resolved);
+  const { models, issue } = await fetchModels(def, resolved);
+  const available = def.requireSuccessfulModelProbe && issue ? false : true;
   return {
     ...stripFns(def),
     models,
-    available: true,
+    available,
     path: resolved,
     version,
+    issue: issue || null,
   };
 }
 
@@ -937,9 +950,11 @@ export function buildLiveArtifactsMcpServersForAgent(def, { enabled = true, comm
   if (!enabled || def?.mcpDiscovery !== 'mature-acp') return [];
   return [
     {
+      type: 'stdio',
       name: 'open-design-live-artifacts',
       command,
       args: [...argsPrefix, 'mcp', 'live-artifacts'],
+      env: [],
     },
   ];
 }

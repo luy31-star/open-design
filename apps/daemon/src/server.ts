@@ -425,6 +425,7 @@ const PROJECTS_DIR = path.join(RUNTIME_DATA_DIR, 'projects');
 const HERMES_DESKTOP_BRIDGE_URL = String(
   process.env.HERMES_DESKTOP_BRIDGE_URL || '',
 ).trim().replace(/\/+$/, '');
+const DESKTOP_LOCKED_AGENT_ID = HERMES_DESKTOP_BRIDGE_URL ? 'hermes' : null;
 fs.mkdirSync(PROJECTS_DIR, { recursive: true });
 
 const activeChatAgentEventSinks = new Map();
@@ -445,6 +446,65 @@ async function readHermesDesktopConfigFromBridge() {
     throw new Error(`desktop bridge returned ${response.status}`);
   }
   return response.json();
+}
+
+function applyHermesDesktopBridgeEnv(env, config) {
+  const next = { ...env };
+  if (!config || typeof config !== 'object') return next;
+
+  const apiKey =
+    typeof config.apiKey === 'string' ? config.apiKey.trim() : '';
+  const model =
+    typeof config.model === 'string' ? config.model.trim() : '';
+  const baseUrl =
+    typeof config.baseUrl === 'string' ? config.baseUrl.trim().replace(/\/+$/, '') : '';
+  const providerBaseUrl =
+    typeof config.apiProviderBaseUrl === 'string'
+      ? config.apiProviderBaseUrl.trim().replace(/\/+$/, '')
+      : '';
+  const rawAgentId =
+    typeof config.agentId === 'string' ? config.agentId.trim().toLowerCase() : '';
+
+  if (model) {
+    next.HERMES_INFERENCE_MODEL = model;
+  }
+
+  // Hermes Desktop currently exposes provider creds through the creation-studio
+  // bridge for the locked Hermes agent. Prefer an explicit provider when the
+  // bridge has one; otherwise infer MiniMax global vs CN from the endpoint host.
+  const effectiveBaseUrl = providerBaseUrl || baseUrl;
+  const inferredProvider =
+    rawAgentId === 'minimax-cn' || effectiveBaseUrl.includes('minimaxi.com')
+      ? 'minimax-cn'
+      : rawAgentId === 'minimax' || effectiveBaseUrl.includes('minimax.io')
+        ? 'minimax'
+        : rawAgentId;
+  if (inferredProvider) {
+    next.HERMES_INFERENCE_PROVIDER = inferredProvider;
+  }
+
+  if (apiKey) {
+    // Bridge-backed desktop configs can drift between minimax and minimax-cn
+    // naming while still pointing at a working endpoint. Seed both env vars so
+    // Hermes ACP resolves credentials regardless of the persisted provider id.
+    next.MINIMAX_API_KEY = apiKey;
+    next.MINIMAX_CN_API_KEY = apiKey;
+  }
+
+  if (effectiveBaseUrl) {
+    next.MINIMAX_BASE_URL = effectiveBaseUrl;
+    next.MINIMAX_CN_BASE_URL = effectiveBaseUrl;
+  }
+
+  return next;
+}
+
+async function syncHermesDesktopBridgeProcessEnv() {
+  if (DESKTOP_LOCKED_AGENT_ID !== 'hermes') return null;
+  const config = await readHermesDesktopConfigFromBridge().catch(() => null);
+  if (!config) return null;
+  Object.assign(process.env, applyHermesDesktopBridgeEnv(process.env, config));
+  return config;
 }
 
 function emitLiveArtifactEvent(grant, action, artifact) {
@@ -1062,12 +1122,23 @@ export async function startServer({ port = 7456, host = process.env.OD_BIND_HOST
   const app = express();
   app.use(express.json({ limit: '4mb' }));
 
+  function allowedDevPorts() {
+    const raw = process.env.OD_ALLOWED_DEV_ORIGIN_PORTS?.trim();
+    const configured = raw
+      ? raw
+          .split(',')
+          .map((value) => Number(value.trim()))
+          .filter((value) => Number.isInteger(value) && value > 0)
+      : [];
+    return configured.length > 0 ? configured : [1420];
+  }
+
   // Build the set of allowed browser origins for the current bind config.
   // Shared by the global origin middleware and isLocalSameOrigin() so
   // both use the same policy (loopback + explicit bind host, HTTP + HTTPS,
   // OD_WEB_PORT support).
   function buildAllowedOrigins() {
-    const ports = [resolvedPort];
+    const ports = [resolvedPort, ...allowedDevPorts()];
     const webPort = Number(process.env.OD_WEB_PORT);
     if (webPort && webPort !== resolvedPort) ports.push(webPort);
     const schemes = ['http', 'https'];
@@ -1144,7 +1215,9 @@ export async function startServer({ port = 7456, host = process.env.OD_BIND_HOST
   // Warm agent-capability probes (e.g. whether the installed Claude Code
   // build advertises --include-partial-messages) so the first /api/chat
   // hits a populated cache even if /api/agents hasn't been called yet.
-  void detectAgents().catch(() => {});
+  void syncHermesDesktopBridgeProcessEnv()
+    .catch(() => null)
+    .then(() => detectAgents().catch(() => {}));
 
   await recoverStaleLiveArtifactRefreshes({ projectsRoot: PROJECTS_DIR }).catch((error) => {
     console.warn('[od] Failed to recover stale live artifact refreshes:', error);
@@ -1837,7 +1910,11 @@ export async function startServer({ port = 7456, host = process.env.OD_BIND_HOST
 
   app.get('/api/agents', async (_req, res) => {
     try {
-      const list = await detectAgents();
+      await syncHermesDesktopBridgeProcessEnv().catch(() => null);
+      let list = await detectAgents();
+      if (DESKTOP_LOCKED_AGENT_ID) {
+        list = list.filter((agent) => agent.id === DESKTOP_LOCKED_AGENT_ID);
+      }
       res.json({ agents: list });
     } catch (err) {
       res.status(500).json({ error: String(err) });
@@ -3350,7 +3427,7 @@ export async function startServer({ port = 7456, host = process.env.OD_BIND_HOST
     /** @type {Partial<ChatRequest> & { imagePaths?: string[] }} */
     chatBody = chatBody || {};
     const {
-      agentId,
+      agentId: requestedAgentId,
       message,
       systemPrompt,
       imagePaths = [],
@@ -3365,6 +3442,7 @@ export async function startServer({ port = 7456, host = process.env.OD_BIND_HOST
       model,
       reasoning,
     } = chatBody;
+    const agentId = DESKTOP_LOCKED_AGENT_ID || requestedAgentId;
     if (typeof projectId === 'string' && projectId) run.projectId = projectId;
     if (typeof conversationId === 'string' && conversationId)
       run.conversationId = conversationId;
@@ -3734,7 +3812,11 @@ export async function startServer({ port = 7456, host = process.env.OD_BIND_HOST
         def.promptViaStdin || def.streamFormat === 'acp-json-rpc'
           ? 'pipe'
           : 'ignore';
-      const env = {
+      const hermesDesktopConfig =
+        def.id === 'hermes'
+          ? await readHermesDesktopConfigFromBridge().catch(() => null)
+          : null;
+      let env = {
         ...spawnEnvForAgent(
           def.id,
           {
@@ -3744,6 +3826,9 @@ export async function startServer({ port = 7456, host = process.env.OD_BIND_HOST
         ),
         ...odMediaEnv,
       };
+      if (def.id === 'hermes') {
+        env = applyHermesDesktopBridgeEnv(env, hermesDesktopConfig);
+      }
       const invocation = createCommandInvocation({
         command: resolvedBin,
         args,
@@ -4628,11 +4713,18 @@ export function isLocalSameOrigin(req, port) {
   // bind host — matching the global origin middleware policy exactly.
   const host = String(req.headers.host || '');
   const origin = req.headers.origin;
+  const rawDevPorts = process.env.OD_ALLOWED_DEV_ORIGIN_PORTS?.trim();
+  const devPorts = rawDevPorts
+    ? rawDevPorts
+        .split(',')
+        .map((value) => Number(value.trim()))
+        .filter((value) => Number.isInteger(value) && value > 0)
+    : [1420];
 
   // Build allowed set inline (same logic as buildAllowedOrigins in
   // startServer, but self-contained so the exported helper works
   // without closing over server-scoped variables).
-  const ports = [port];
+  const ports = [port, ...devPorts];
   const webPort = Number(process.env.OD_WEB_PORT);
   if (webPort && webPort !== port) ports.push(webPort);
   const bindHost = process.env.OD_BIND_HOST || '127.0.0.1';

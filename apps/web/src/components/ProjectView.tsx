@@ -86,6 +86,7 @@ import { decideAutoOpenAfterWrite } from './auto-open-file';
 import { FileWorkspace } from './FileWorkspace';
 
 interface Props {
+  desktopManaged?: boolean;
   project: Project;
   routeFileName: string | null;
   config: AppConfig;
@@ -205,6 +206,7 @@ function projectEventToAgentEvent(evt: ProjectEvent): LiveArtifactEventItem['eve
 }
 
 export function ProjectView({
+  desktopManaged = false,
   project,
   routeFileName,
   config,
@@ -1703,8 +1705,9 @@ export function ProjectView({
       <AppChromeHeader
         onBack={onBack}
         backLabel={t('project.backToProjects')}
-        actions={(
+        actions={desktopManaged ? null : (
           <AvatarMenu
+            desktopManaged={desktopManaged}
             config={config}
             agents={agents}
             daemonLive={daemonLive}

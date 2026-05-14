@@ -20,7 +20,15 @@ test('ACP session params do not request global MCP config mutation', () => {
 });
 
 test('ACP session params accept explicit MCP servers as optional configuration', () => {
-  const mcpServers = [{ name: 'open-design-live-artifacts', command: 'od', args: ['mcp', 'live-artifacts'] }];
+  const mcpServers = [
+    {
+      type: 'stdio',
+      name: 'open-design-live-artifacts',
+      command: 'od',
+      args: ['mcp', 'live-artifacts'],
+      env: [],
+    },
+  ];
 
   assert.deepEqual(buildAcpSessionNewParams('/tmp/od-project', { mcpServers }), {
     cwd: path.resolve('/tmp/od-project'),

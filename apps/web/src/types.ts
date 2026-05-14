@@ -1,5 +1,5 @@
 import type {
-  AgentInfo,
+  AgentInfo as ContractAgentInfo,
   AgentModelPrefs,
   AppVersionInfo,
   AppVersionResponse,
@@ -52,6 +52,10 @@ export type ApiProtocol = 'anthropic' | 'openai' | 'azure' | 'google';
 
 export type LiveArtifactTabId = `live:${string}`;
 export type ProjectWorkspaceTabId = string | LiveArtifactTabId;
+
+export interface AgentInfo extends ContractAgentInfo {
+  issue?: string | null;
+}
 
 export function liveArtifactTabId(artifactId: string): LiveArtifactTabId {
   return `live:${artifactId}`;
@@ -337,7 +341,6 @@ export interface PromptTemplateDetail extends PromptTemplateSummary {
 }
 
 export type {
-  AgentInfo,
   AppVersionInfo,
   AppVersionResponse,
   AudioKind,

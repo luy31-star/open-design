@@ -659,6 +659,10 @@ export function SettingsDialog({
                                   {t('common.installed')}
                                 </span>
                               )
+                            ) : a.issue ? (
+                              <span className="muted" title={a.issue}>
+                                {a.issue}
+                              </span>
                             ) : (
                               <span className="muted">
                                 {t('common.notInstalled')}

@@ -15,7 +15,7 @@ interface Props {
   onRefreshFiles: () => Promise<void> | void;
   onOpenFile: (name: string) => void;
   onOpenLiveArtifact: (tabId: LiveArtifactWorkspaceEntry['tabId']) => void;
-  onDeleteFile: (name: string) => void;
+  onDeleteFile: (name: string) => Promise<void> | void;
   onUpload: () => void;
   onUploadFiles: (files: File[]) => void;
   onPaste: () => void;
@@ -197,6 +197,17 @@ export function DesignFilesPanel({
     }
   }
 
+  async function handleBatchDelete() {
+    const fileList = [...selected];
+    if (fileList.length === 0) return;
+    for (const name of fileList) {
+      await onDeleteFile(name);
+    }
+    setSelected(new Set());
+    setMenuPos(null);
+    if (preview && fileList.includes(preview)) setPreview(null);
+  }
+
   function handleDrop(ev: React.DragEvent<HTMLDivElement>) {
     ev.preventDefault();
     dragDepthRef.current = 0;
@@ -234,6 +245,10 @@ export function DesignFilesPanel({
               <button type="button" onClick={() => void handleBatchDownload()}>
                 <Icon name="download" size={13} />
                 <span>{t('designFiles.downloadSelected', { n: selected.size })}</span>
+              </button>
+              <button type="button" className="danger" onClick={() => void handleBatchDelete()}>
+                <Icon name="close" size={13} />
+                <span>{t('designFiles.delete')} ({selected.size})</span>
               </button>
             </div>
           ) : (
