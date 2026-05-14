@@ -442,7 +442,7 @@ textarea { resize: vertical; font-family: inherit; }
   display: inline-flex;
   justify-content: center;
   color: var(--selected);
-  opacity: 0;
+  opacity: 0.72;
 }
 .od-select-option.selected .od-select-option-check {
   opacity: 1;
@@ -621,7 +621,7 @@ code {
 }
 .workspace-tab:hover::before,
 .workspace-tab.is-active::before {
-  opacity: 0;
+  opacity: 0.72;
 }
 .workspace-tab__main {
   min-width: 0;
@@ -10116,6 +10116,7 @@ button.connector-action.is-loading {
   transition: opacity 120ms ease;
 }
 .df-row:hover .df-row-menu { opacity: 1; }
+.df-row:focus-within .df-row-menu { opacity: 1; }
 .df-row-menu:focus { opacity: 1; }
 .df-row-menu:hover { background: var(--border); color: var(--text); }
 .df-section-more {
@@ -10479,7 +10480,7 @@ button.connector-action.is-loading {
   transition: opacity 140ms ease;
 }
 .viewer-preview-controls[data-active='false'] {
-  opacity: 0;
+  opacity: 0.72;
   pointer-events: none;
   user-select: none;
 }
@@ -15657,6 +15658,7 @@ body.entry-resizing { cursor: col-resize; user-select: none; }
   transition: opacity 120ms ease, background-color 120ms ease, color 120ms ease;
 }
 .chat-conv-item:hover .chat-conv-item-del { opacity: 1; }
+.chat-conv-item:focus-within .chat-conv-item-del { opacity: 1; }
 .chat-conv-item-del:hover { background: var(--red-bg); color: var(--red); }
 
 /* ============================================================

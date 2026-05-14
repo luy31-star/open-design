@@ -138,6 +138,7 @@ import { copyToClipboard } from '../lib/copy-to-clipboard';
 import { effectiveMaxTokens } from '../state/maxTokens';
 
 interface Props {
+  desktopManaged?: boolean;
   project: Project;
   routeFileName: string | null;
   /**
@@ -431,6 +432,7 @@ function projectEventToAgentEvent(evt: ProjectEvent): LiveArtifactEventItem['eve
 }
 
 export function ProjectView({
+  desktopManaged = false,
   project,
   routeFileName,
   routeConversationId = null,
@@ -3188,8 +3190,9 @@ export function ProjectView({
         showTrafficSpace={false}
         onBack={onBack}
         backLabel={t('project.backToProjects')}
-        actions={(
+        actions={desktopManaged ? null : (
           <AvatarMenu
+            desktopManaged={desktopManaged}
             config={config}
             agents={agents}
             daemonLive={daemonLive}

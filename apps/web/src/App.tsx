@@ -723,11 +723,12 @@ export function App() {
 
   const handleModeChange = useCallback(
     (mode: AppConfig['mode']) => {
+      if (desktopManaged) return;
       const next = { ...config, mode };
       saveConfig(next);
       setConfig(next);
     },
-    [config],
+    [config, desktopManaged],
   );
 
   // Quick theme switch from the settings dropdown in the entry view.
@@ -748,12 +749,13 @@ export function App() {
 
   const handleAgentChange = useCallback(
     (agentId: string) => {
+      if (desktopManaged) return;
       const next = { ...config, agentId };
       saveConfig(next);
       void syncConfigToDaemon(next);
       setConfig(next);
     },
-    [config],
+    [config, desktopManaged],
   );
 
   const handleAgentModelChange = useCallback(

@@ -17,6 +17,7 @@ import type {
 type FetchedRuntimeModels = {
   models: RuntimeModelOption[];
   source: RuntimeModelSource;
+  issue: string | null;
 };
 
 async function fetchModels(
@@ -28,15 +29,19 @@ async function fetchModels(
     try {
       const parsed = await def.fetchModels(resolvedBin, env);
       if (!parsed || parsed.length === 0) {
-        return { models: def.fallbackModels, source: 'fallback' };
+        return { models: def.fallbackModels, source: 'fallback', issue: null };
       }
-      return { models: parsed, source: 'live' };
-    } catch {
-      return { models: def.fallbackModels, source: 'fallback' };
+      return { models: parsed, source: 'live', issue: null };
+    } catch (err) {
+      return {
+        models: def.fallbackModels,
+        source: 'fallback',
+        issue: err instanceof Error ? err.message : String(err),
+      };
     }
   }
   if (!def.listModels) {
-    return { models: def.fallbackModels, source: 'fallback' };
+    return { models: def.fallbackModels, source: 'fallback', issue: null };
   }
   try {
     const { stdout } = await execAgentFile(resolvedBin, def.listModels.args, {
@@ -52,11 +57,15 @@ async function fetchModels(
     // usable list (e.g. cursor-agent's "No models available"); fall back
     // to the static hint so the picker isn't stuck on Default-only.
     if (!parsed || parsed.length === 0) {
-      return { models: def.fallbackModels, source: 'fallback' };
+      return { models: def.fallbackModels, source: 'fallback', issue: null };
     }
-    return { models: parsed, source: 'live' };
-  } catch {
-    return { models: def.fallbackModels, source: 'fallback' };
+    return { models: parsed, source: 'live', issue: null };
+  } catch (err) {
+    return {
+      models: def.fallbackModels,
+      source: 'fallback',
+      issue: err instanceof Error ? err.message : String(err),
+    };
   }
 }
 
@@ -179,11 +188,14 @@ async function probe(
   }
   const modelResult = await fetchModels(def, launch.launchPath, probeEnv);
   const auth = await probeAgentAuthStatus(def.id, launch.launchPath, probeEnv);
+  const available =
+    def.requireSuccessfulModelProbe && modelResult.issue ? false : true;
   return {
     ...stripFns(def),
     models: modelResult.models,
     modelsSource: modelResult.source,
-    available: true,
+    available,
+    issue: modelResult.issue,
     path: launch.selectedPath,
     version: outcome.version,
     ...(auth

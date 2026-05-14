@@ -12,6 +12,7 @@ export interface AgentInfo {
   authMessage?: string;
   path?: string;
   version?: string | null;
+  issue?: string | null;
   models?: AgentModelOption[];
   /** Whether models came from the installed CLI or Open Design's static fallback. */
   modelsSource?: 'live' | 'fallback';

@@ -1,5 +1,5 @@
 import type {
-  AgentInfo,
+  AgentInfo as ContractAgentInfo,
   AgentCliEnvPrefs,
   AgentModelPrefs,
   AgentTestRequest,
@@ -95,6 +95,10 @@ export type ApiProtocol = 'anthropic' | 'openai' | 'azure' | 'google' | 'ollama'
 
 export type LiveArtifactTabId = `live:${string}`;
 export type ProjectWorkspaceTabId = string | LiveArtifactTabId;
+
+export interface AgentInfo extends ContractAgentInfo {
+  issue?: string | null;
+}
 
 export function liveArtifactTabId(artifactId: string): LiveArtifactTabId {
   return `live:${artifactId}`;

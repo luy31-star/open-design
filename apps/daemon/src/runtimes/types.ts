@@ -72,6 +72,7 @@ export type RuntimeAgentDef = {
   supportsImagePaths?: boolean;
   maxPromptArgBytes?: number;
   mcpDiscovery?: string;
+  requireSuccessfulModelProbe?: boolean;
   installUrl?: string;
   docsUrl?: string;
 };
@@ -93,6 +94,7 @@ export type DetectedAgent = Omit<
   available: boolean;
   authStatus?: 'ok' | 'missing' | 'unknown';
   authMessage?: string;
+  issue?: string | null;
   path?: string;
   version?: string | null;
 };

@@ -471,7 +471,6 @@ export function FileWorkspace({
   }, [quickSwitcherOpen]);
 
   async function handleDelete(name: string) {
-    if (!confirm(t('workspace.deleteFileConfirm', { name }))) return;
     const ok = await deleteProjectFile(projectId, name);
     if (ok) {
       await onRefreshFiles();

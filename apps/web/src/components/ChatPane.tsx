@@ -1083,8 +1083,16 @@ function ConversationRow({
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(conversation.title ?? '');
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const displayTitle =
     conversation.title || t('chat.untitledConversation');
+
+  useEffect(() => {
+    if (!confirmDelete) return;
+    const timer = window.setTimeout(() => setConfirmDelete(false), 4000);
+    return () => window.clearTimeout(timer);
+  }, [confirmDelete]);
+
   return (
     <div
       className={`chat-conv-item${active ? ' active' : ''}`}
@@ -1131,17 +1139,17 @@ function ConversationRow({
         type="button"
         className="chat-conv-item-del"
         data-testid={`conversation-delete-${conversation.id}`}
-        title={t('chat.deleteConversation')}
+        title={confirmDelete ? t('common.delete') : t('chat.deleteConversation')}
         onClick={(e) => {
           e.stopPropagation();
-          if (
-            confirm(t('chat.deleteConversationConfirm', { title: displayTitle }))
-          ) {
+          if (confirmDelete) {
             onDelete();
+            return;
           }
+          setConfirmDelete(true);
         }}
       >
-        <Icon name="close" size={12} />
+        {confirmDelete ? '!' : <Icon name="close" size={12} />}
       </button>
     </div>
   );

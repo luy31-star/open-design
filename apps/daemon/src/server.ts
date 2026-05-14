@@ -1197,6 +1197,7 @@ const PROJECTS_DIR = path.join(RUNTIME_DATA_DIR, 'projects');
 const HERMES_DESKTOP_BRIDGE_URL = String(
   process.env.HERMES_DESKTOP_BRIDGE_URL || '',
 ).trim().replace(/\/+$/, '');
+const DESKTOP_LOCKED_AGENT_ID = HERMES_DESKTOP_BRIDGE_URL ? 'hermes' : null;
 const USER_SKILLS_DIR = path.join(RUNTIME_DATA_DIR, 'skills');
 const USER_DESIGN_SYSTEMS_DIR = path.join(RUNTIME_DATA_DIR, 'design-systems');
 const PLUGIN_REGISTRY_ROOTS = registryRootsForDataDir(RUNTIME_DATA_DIR);
@@ -1319,6 +1320,59 @@ async function readHermesDesktopConfigFromBridge() {
     throw new Error(`desktop bridge returned ${response.status}`);
   }
   return response.json();
+}
+
+function applyHermesDesktopBridgeEnv(env, config) {
+  const next = { ...env };
+  if (!config || typeof config !== 'object') return next;
+
+  const apiKey =
+    typeof config.apiKey === 'string' ? config.apiKey.trim() : '';
+  const model =
+    typeof config.model === 'string' ? config.model.trim() : '';
+  const baseUrl =
+    typeof config.baseUrl === 'string' ? config.baseUrl.trim().replace(/\/+$/, '') : '';
+  const providerBaseUrl =
+    typeof config.apiProviderBaseUrl === 'string'
+      ? config.apiProviderBaseUrl.trim().replace(/\/+$/, '')
+      : '';
+  const rawAgentId =
+    typeof config.agentId === 'string' ? config.agentId.trim().toLowerCase() : '';
+
+  if (model) {
+    next.HERMES_INFERENCE_MODEL = model;
+  }
+
+  const effectiveBaseUrl = providerBaseUrl || baseUrl;
+  const inferredProvider =
+    rawAgentId === 'minimax-cn' || effectiveBaseUrl.includes('minimaxi.com')
+      ? 'minimax-cn'
+      : rawAgentId === 'minimax' || effectiveBaseUrl.includes('minimax.io')
+        ? 'minimax'
+        : rawAgentId;
+  if (inferredProvider) {
+    next.HERMES_INFERENCE_PROVIDER = inferredProvider;
+  }
+
+  if (apiKey) {
+    next.MINIMAX_API_KEY = apiKey;
+    next.MINIMAX_CN_API_KEY = apiKey;
+  }
+
+  if (effectiveBaseUrl) {
+    next.MINIMAX_BASE_URL = effectiveBaseUrl;
+    next.MINIMAX_CN_BASE_URL = effectiveBaseUrl;
+  }
+
+  return next;
+}
+
+async function syncHermesDesktopBridgeProcessEnv() {
+  if (DESKTOP_LOCKED_AGENT_ID !== 'hermes') return null;
+  const config = await readHermesDesktopConfigFromBridge().catch(() => null);
+  if (!config) return null;
+  Object.assign(process.env, applyHermesDesktopBridgeEnv(process.env, config));
+  return config;
 }
 
 function emitChatAgentEvent(runId, payload) {
@@ -3216,7 +3270,9 @@ export async function startServer({
   // Warm agent-capability probes (e.g. whether the installed Claude Code
   // build advertises --include-partial-messages) so the first /api/chat
   // hits a populated cache even if /api/agents hasn't been called yet.
-  void readAppConfig(RUNTIME_DATA_DIR)
+  void syncHermesDesktopBridgeProcessEnv()
+    .catch(() => null)
+    .then(() => readAppConfig(RUNTIME_DATA_DIR))
     .then((config) => {
       orbitService.configure(config.orbit);
       return detectAgents(config.agentCliEnv ?? {});
@@ -4619,7 +4675,11 @@ export async function startServer({
   app.get('/api/agents', async (_req, res) => {
     try {
       const config = await readAppConfig(RUNTIME_DATA_DIR);
-      const list = await detectAgents(config.agentCliEnv ?? {});
+      await syncHermesDesktopBridgeProcessEnv().catch(() => null);
+      let list = await detectAgents(config.agentCliEnv ?? {});
+      if (DESKTOP_LOCKED_AGENT_ID) {
+        list = list.filter((agent) => agent.id === DESKTOP_LOCKED_AGENT_ID);
+      }
       res.json({ agents: list });
     } catch (err) {
       res.status(500).json({ error: String(err) });
@@ -8631,7 +8691,7 @@ export async function startServer({
     }
 
     const prompt = composeSystemPrompt({
-      agentId,
+      agentId: requestedAgentId,
       includeCodexImagegenOverride: false,
       skillBody,
       skillName,
@@ -8783,6 +8843,7 @@ export async function startServer({
       run.assistantMessageId = assistantMessageId;
     if (typeof clientRequestId === 'string' && clientRequestId)
       run.clientRequestId = clientRequestId;
+    const agentId = DESKTOP_LOCKED_AGENT_ID || requestedAgentId;
     if (typeof agentId === 'string' && agentId) run.agentId = agentId;
     // Stash the original user prompt + per-turn config so the
     // langfuse-bridge report path can include them without reaching back
@@ -9438,7 +9499,11 @@ export async function startServer({
         def.promptViaStdin || def.streamFormat === 'acp-json-rpc'
           ? 'pipe'
           : 'ignore';
-      const env = applyAgentLaunchEnv({
+      const hermesDesktopConfig =
+        def.id === 'hermes'
+          ? await readHermesDesktopConfigFromBridge().catch(() => null)
+          : null;
+      let env = applyAgentLaunchEnv({
         ...spawnEnvForAgent(
           def.id,
           {
@@ -9449,6 +9514,9 @@ export async function startServer({
         ),
         ...odMediaEnv,
       }, agentLaunch);
+      if (def.id === 'hermes') {
+        env = applyHermesDesktopBridgeEnv(env, hermesDesktopConfig);
+      }
       spawnedAgentEnv = env;
       const invocation = createCommandInvocation({
         command: agentLaunch.launchPath,

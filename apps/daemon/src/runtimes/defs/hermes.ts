@@ -6,6 +6,7 @@ export const hermesAgentDef = {
     name: 'Hermes',
     bin: 'hermes',
     versionArgs: ['--version'],
+    requireSuccessfulModelProbe: true,
     fetchModels: async (resolvedBin, env) =>
       detectAcpModels({
         bin: resolvedBin,

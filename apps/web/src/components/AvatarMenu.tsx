@@ -8,6 +8,7 @@ import { apiProtocolLabel } from '../utils/apiProtocol';
 import { isMacPlatform } from '../utils/platform';
 
 interface Props {
+  desktopManaged?: boolean;
   config: AppConfig;
   agents: AgentInfo[];
   daemonLive: boolean;
@@ -28,6 +29,7 @@ interface Props {
  * a Settings entry — replaces the wide AgentPicker + env-pill row.
  */
 export function AvatarMenu({
+  desktopManaged = false,
   config,
   agents,
   daemonLive,
@@ -109,45 +111,47 @@ export function AvatarMenu({
             </span>
           </div>
 
-          <button
-            type="button"
-            className="avatar-item"
-            onClick={() => {
-              onModeChange('daemon');
-              if (!daemonLive) {
-                // No daemon — let user know via settings page rather than
-                // silently failing.
-                setOpen(false);
-                onOpenSettings();
-              }
-            }}
-            disabled={!daemonLive && config.mode !== 'daemon'}
-          >
-            <span className="avatar-item-icon" aria-hidden>
-              <Icon name="file-code" size={14} />
-            </span>
-            <span>{t('avatar.useLocal')}</span>
-            {config.mode === 'daemon' ? (
-              <span className="avatar-item-meta">{t('avatar.metaActive')}</span>
-            ) : !daemonLive ? (
-              <span className="avatar-item-meta">{t('avatar.metaOffline')}</span>
-            ) : null}
-          </button>
-          <button
-            type="button"
-            className="avatar-item"
-            onClick={() => onModeChange('api')}
-          >
-            <span className="avatar-item-icon" aria-hidden>
-              <Icon name="link" size={14} />
-            </span>
-            <span>{t('avatar.useApi')}</span>
-            {config.mode === 'api' ? (
-              <span className="avatar-item-meta">{t('avatar.metaActive')}</span>
-            ) : null}
-          </button>
+          {!desktopManaged ? (
+            <>
+              <button
+                type="button"
+                className="avatar-item"
+                onClick={() => {
+                  onModeChange('daemon');
+                  if (!daemonLive) {
+                    setOpen(false);
+                    onOpenSettings();
+                  }
+                }}
+                disabled={!daemonLive && config.mode !== 'daemon'}
+              >
+                <span className="avatar-item-icon" aria-hidden>
+                  <Icon name="file-code" size={14} />
+                </span>
+                <span>{t('avatar.useLocal')}</span>
+                {config.mode === 'daemon' ? (
+                  <span className="avatar-item-meta">{t('avatar.metaActive')}</span>
+                ) : !daemonLive ? (
+                  <span className="avatar-item-meta">{t('avatar.metaOffline')}</span>
+                ) : null}
+              </button>
+              <button
+                type="button"
+                className="avatar-item"
+                onClick={() => onModeChange('api')}
+              >
+                <span className="avatar-item-icon" aria-hidden>
+                  <Icon name="link" size={14} />
+                </span>
+                <span>{t('avatar.useApi')}</span>
+                {config.mode === 'api' ? (
+                  <span className="avatar-item-meta">{t('avatar.metaActive')}</span>
+                ) : null}
+              </button>
+            </>
+          ) : null}
 
-          {config.mode === 'daemon' && installedAgents.length > 0 ? (
+          {config.mode === 'daemon' && installedAgents.length > 0 && !desktopManaged ? (
             <>
               <div className="avatar-section-label">{t('avatar.codeAgent')}</div>
               {installedAgents.map((a) => (

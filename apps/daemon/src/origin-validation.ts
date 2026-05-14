@@ -38,8 +38,18 @@ export function allowedBrowserPorts(
   const ports = [];
   const primary = Number(port);
   if (primary) ports.push(primary);
+  const rawDevPorts = env.OD_ALLOWED_DEV_ORIGIN_PORTS?.trim();
+  const devPorts = rawDevPorts
+    ? rawDevPorts
+        .split(',')
+        .map((value) => Number(value.trim()))
+        .filter((value) => Number.isInteger(value) && value > 0)
+    : [1420];
+  for (const value of devPorts) {
+    if (!ports.includes(value)) ports.push(value);
+  }
   const webPort = Number(env.OD_WEB_PORT);
-  if (webPort && webPort !== primary) ports.push(webPort);
+  if (webPort && !ports.includes(webPort)) ports.push(webPort);
   return ports;
 }
 
