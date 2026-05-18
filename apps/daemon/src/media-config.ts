@@ -68,6 +68,7 @@ function errorCode(err: unknown): string | undefined {
 }
 
 const ENV_KEYS: Record<string, string[]> = {
+  hermes: ['OD_HERMES_API_KEY', 'HERMES_API_KEY'],
   // OPENAI_API_KEY is the canonical env for the standard OpenAI API.
   // AZURE_API_KEY / AZURE_OPENAI_API_KEY are the canonical envs Azure
   // OpenAI examples use — we share the openai provider slot so a user

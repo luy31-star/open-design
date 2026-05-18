@@ -23,6 +23,7 @@ export type MediaProvider = {
 
 export type MediaModel = {
   id: string;
+  wireId?: string;
   label: string;
   hint: string;
   provider: string;
@@ -31,6 +32,7 @@ export type MediaModel = {
 };
 
 export const MEDIA_PROVIDERS: MediaProvider[] = [
+  { id: 'hermes', label: 'Hermes Hosted', hint: 'Shiyun API for image, video, and audio', integrated: true, settingsVisible: false, defaultBaseUrl: 'https://shiyunapi.com/v1' },
   { id: 'openai', label: 'OpenAI', hint: 'gpt-image-2 / dall-e-3', integrated: true, defaultBaseUrl: 'https://api.openai.com/v1' },
   { id: 'volcengine', label: 'Volcengine Ark (Doubao)', hint: 'Seedance 2.0 / Seedream', integrated: true, defaultBaseUrl: 'https://ark.cn-beijing.volces.com/api/v3' },
   { id: 'grok', label: 'xAI Grok Imagine', hint: 'grok-imagine — image + video with native audio', integrated: true, defaultBaseUrl: 'https://api.x.ai/v1' },
@@ -70,6 +72,8 @@ export const MEDIA_PROVIDERS: MediaProvider[] = [
 ];
 
 export const IMAGE_MODELS: MediaModel[] = [
+  { id: 'hermes-gpt-image-2', wireId: 'gpt-image-2', label: 'GPT Image 2', hint: 'Hermes · Shiyun API', provider: 'hermes', caps: ['t2i', 'i2i', 'inpaint'] },
+  { id: 'hermes-gpt-image-1', wireId: 'gpt-image-1', label: 'GPT Image 1', hint: 'Hermes · Shiyun API', provider: 'hermes', caps: ['t2i', 'i2i', 'inpaint'] },
   { id: 'gpt-image-2', label: 'gpt-image-2', hint: 'OpenAI · 4K, native multimodal', provider: 'openai', caps: ['t2i', 'i2i', 'inpaint'], default: true },
   { id: 'gpt-image-1.5', label: 'gpt-image-1.5', hint: 'OpenAI · 4× faster than gpt-image-1', provider: 'openai', caps: ['t2i', 'i2i', 'inpaint'] },
   { id: 'gpt-image-1', label: 'gpt-image-1', hint: 'OpenAI · ChatGPT native', provider: 'openai', caps: ['t2i', 'i2i', 'inpaint'] },
@@ -114,6 +118,9 @@ export const IMAGE_MODELS: MediaModel[] = [
 ];
 
 export const VIDEO_MODELS: MediaModel[] = [
+  { id: 'hermes-seedance-2-0', wireId: 'doubao-seedance-2-0-260128', label: 'Seedance 2.0', hint: 'Hermes · Shiyun API', provider: 'hermes', caps: ['t2v', 'i2v', 'audio'] },
+  { id: 'hermes-kling-video', wireId: 'kling-video', label: 'Kling Video', hint: 'Hermes · Shiyun API', provider: 'hermes', caps: ['t2v', 'i2v'] },
+  { id: 'hermes-veo3', wireId: 'veo3.1', label: 'Veo 3.1', hint: 'Hermes · Shiyun API', provider: 'hermes', caps: ['t2v', 'audio'] },
   { id: 'doubao-seedance-2-0-260128', label: 'seedance-2.0', hint: 'ByteDance · t2v + i2v + audio', provider: 'volcengine', caps: ['t2v', 'i2v', 'audio'], default: true },
   { id: 'doubao-seedance-2-0-fast-260128', label: 'seedance-2.0-fast', hint: 'ByteDance · faster, cheaper', provider: 'volcengine', caps: ['t2v', 'i2v', 'audio'] },
   { id: 'doubao-seedance-1-0-pro-250528', label: 'seedance-1.0-pro', hint: 'ByteDance · 1.0', provider: 'volcengine', caps: ['t2v', 'i2v'] },
@@ -148,6 +155,7 @@ export const AUDIO_MODELS_BY_KIND: Record<AudioKind, MediaModel[]> = {
     { id: 'lyria-2', label: 'lyria-2', hint: 'Google', provider: 'google', caps: ['music'] },
   ],
   speech: [
+    { id: 'hermes-gpt-4o-mini-tts', wireId: 'gpt-4o-mini-tts', label: 'GPT 4o Mini TTS', hint: 'Hermes · Shiyun API', provider: 'hermes', caps: ['tts'] },
     { id: 'minimax-tts', label: 'minimax-tts', hint: 'MiniMax', provider: 'minimax', caps: ['tts'], default: true },
     { id: 'fish-speech-2', label: 'fish-speech-2', hint: 'FishAudio', provider: 'fishaudio', caps: ['tts', 'voice-clone'] },
     { id: 'elevenlabs-v3', label: 'elevenlabs-v3', hint: 'ElevenLabs', provider: 'elevenlabs', caps: ['tts', 'voice-clone'] },

@@ -28,6 +28,7 @@ import type { AudioKind, MediaAspect } from '../types';
  * providers must be added to {@link MEDIA_PROVIDERS} below.
  */
 export type MediaProviderId =
+  | 'hermes'
   | 'openai'
   | 'volcengine'
   | 'grok'
@@ -80,6 +81,14 @@ export interface MediaProvider {
  * configured a key.
  */
 export const MEDIA_PROVIDERS: MediaProvider[] = [
+  {
+    id: 'hermes',
+    label: 'Hermes Hosted',
+    hint: 'Activation-code gateway for image, video, and audio',
+    integrated: true,
+    settingsVisible: false,
+    defaultBaseUrl: 'https://shiyunapi.com/v1',
+  },
   {
     id: 'openai',
     label: 'OpenAI',
@@ -263,6 +272,8 @@ export const MEDIA_PROVIDERS: MediaProvider[] = [
 export interface MediaModel {
   /** Stable ID used in metadata.imageModel / videoModel / audioModel. */
   id: string;
+  /** Optional upstream id when the local picker id is an alias. */
+  wireId?: string;
   /** Short label shown in pickers. */
   label: string;
   /** Vendor / context hint shown under the label. */
@@ -283,6 +294,22 @@ export interface MediaModel {
  * `packages/model-bank/src/aiModels/openai.ts` and friends in lobehub.
  */
 export const IMAGE_MODELS: MediaModel[] = [
+  {
+    id: 'hermes-gpt-image-2',
+    wireId: 'gpt-image-2',
+    label: 'GPT Image 2',
+    hint: 'Hermes Hosted · points billing',
+    provider: 'hermes',
+    caps: ['t2i', 'i2i', 'inpaint'],
+  },
+  {
+    id: 'hermes-gpt-image-1',
+    wireId: 'gpt-image-1',
+    label: 'GPT Image 1',
+    hint: 'Hermes Hosted · classic image model',
+    provider: 'hermes',
+    caps: ['t2i', 'i2i', 'inpaint'],
+  },
   // OpenAI — fully integrated path.
   {
     id: 'gpt-image-2',
@@ -427,6 +454,102 @@ export const IMAGE_MODELS: MediaModel[] = [
  * Seedance Lite), kling.ts and friends.
  */
 export const VIDEO_MODELS: MediaModel[] = [
+  {
+    id: 'hermes-doubao-seedance-pro',
+    wireId: 'doubao-seedance-1-0-pro-fast-251015',
+    label: 'Doubao Seedance Pro',
+    hint: 'Hermes Hosted · fast t2v / i2v',
+    provider: 'hermes',
+    caps: ['t2v', 'i2v'],
+  },
+  {
+    id: 'hermes-sora-2',
+    wireId: 'sora-2',
+    label: 'Sora 2',
+    hint: 'Hermes Hosted',
+    provider: 'hermes',
+    caps: ['t2v'],
+  },
+  {
+    id: 'hermes-sora-2-pro',
+    wireId: 'sora-2-pro',
+    label: 'Sora 2 Pro',
+    hint: 'Hermes Hosted',
+    provider: 'hermes',
+    caps: ['t2v'],
+  },
+  {
+    id: 'hermes-hailuo-02',
+    wireId: 'MiniMax-Hailuo-02',
+    label: 'Hailuo 02',
+    hint: 'Hermes Hosted · MiniMax video',
+    provider: 'hermes',
+    caps: ['t2v', 'i2v'],
+  },
+  {
+    id: 'hermes-wan-2-6-i2v',
+    wireId: 'wan2.6-i2v',
+    label: 'Wan 2.6 I2V',
+    hint: 'Hermes Hosted · Tongyi Wanxiang',
+    provider: 'hermes',
+    caps: ['i2v'],
+  },
+  {
+    id: 'hermes-kling-video',
+    wireId: 'kling-video',
+    label: 'Kling Text to Video',
+    hint: 'Hermes Hosted',
+    provider: 'hermes',
+    caps: ['t2v'],
+  },
+  {
+    id: 'hermes-kling-image2video',
+    wireId: 'kling-image2video',
+    label: 'Kling Image to Video',
+    hint: 'Hermes Hosted',
+    provider: 'hermes',
+    caps: ['i2v'],
+  },
+  {
+    id: 'hermes-kling-multi-image2video',
+    wireId: 'kling-multi-image2video',
+    label: 'Kling Multi Image to Video',
+    hint: 'Hermes Hosted',
+    provider: 'hermes',
+    caps: ['i2v'],
+  },
+  {
+    id: 'hermes-kling-omni-video',
+    wireId: 'kling-omni-video',
+    label: 'Kling Omni Video',
+    hint: 'Hermes Hosted',
+    provider: 'hermes',
+    caps: ['t2v', 'i2v'],
+  },
+  {
+    id: 'hermes-veo3-1-fast',
+    wireId: 'veo3.1-fast',
+    label: 'Veo 3.1 Fast',
+    hint: 'Hermes Hosted · via FAL',
+    provider: 'hermes',
+    caps: ['t2v'],
+  },
+  {
+    id: 'hermes-veo3-1',
+    wireId: 'veo3.1',
+    label: 'Veo 3.1',
+    hint: 'Hermes Hosted · via FAL',
+    provider: 'hermes',
+    caps: ['t2v'],
+  },
+  {
+    id: 'hermes-vidu-2',
+    wireId: 'vidu2.0',
+    label: 'Vidu 2.0',
+    hint: 'Hermes Hosted',
+    provider: 'hermes',
+    caps: ['t2v'],
+  },
   // Volcengine — Seedance 2.0 (integrated).
   {
     id: 'doubao-seedance-2-0-260128',
@@ -523,6 +646,8 @@ export const AUDIO_MODELS_BY_KIND: Record<AudioKind, MediaModel[]> = {
     { id: 'lyria-2', label: 'lyria-2', hint: 'Google', provider: 'google', caps: ['music'] },
   ],
   speech: [
+    { id: 'hermes-tts-1', wireId: 'tts-1', label: 'OpenAI TTS 1', hint: 'Hermes Hosted', provider: 'hermes', caps: ['tts'] },
+    { id: 'hermes-gpt-4o-mini-tts', wireId: 'gpt-4o-mini-tts', label: 'GPT-4o mini TTS', hint: 'Hermes Hosted', provider: 'hermes', caps: ['tts'] },
     { id: 'minimax-tts', label: 'minimax-tts', hint: 'MiniMax', provider: 'minimax', caps: ['tts'], default: true },
     { id: 'fish-speech-2', label: 'fish-speech-2', hint: 'FishAudio', provider: 'fishaudio', caps: ['tts', 'voice-clone'] },
     { id: 'elevenlabs-v3', label: 'elevenlabs-v3', hint: 'ElevenLabs', provider: 'elevenlabs', caps: ['tts', 'voice-clone'] },

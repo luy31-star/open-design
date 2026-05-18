@@ -261,6 +261,14 @@ function clampWithWarning(value: unknown, allowed: number[], flagName: string): 
   return { value: clamped, warning: null };
 }
 
+function wireModelId(ctx: MediaContext): string {
+  return ctx.wireModel || ctx.model;
+}
+
+function providerTagFor(ctx: MediaContext, fallback = 'openai'): string {
+  return ctx.provider?.id === 'hermes' ? 'hermes' : fallback;
+}
+
 /**
  * Generate a media artifact and write it into the project's files dir.
  *
@@ -438,7 +446,7 @@ export async function generateMedia(args: {
   let intentionalStub = false;
   try {
     if (
-      def.provider === 'openai'
+      (def.provider === 'openai' || def.provider === 'hermes')
       && surface === 'image'
       && customImageOverridesOpenAIModel(ctx, customImageCredentials)
     ) {
@@ -447,17 +455,22 @@ export async function generateMedia(args: {
       bytes = result.bytes;
       providerNote = result.providerNote;
       suggestedExt = result.suggestedExt;
-    } else if (def.provider === 'openai' && surface === 'image') {
+    } else if ((def.provider === 'openai' || def.provider === 'hermes') && surface === 'image') {
       const result = await renderOpenAIImage(ctx, credentials);
       bytes = result.bytes;
       providerNote = result.providerNote;
       suggestedExt = result.suggestedExt;
     } else if (
-      def.provider === 'openai'
+      (def.provider === 'openai' || def.provider === 'hermes')
       && surface === 'audio'
       && ctx.audioKind === 'speech'
     ) {
       const result = await renderOpenAISpeech(ctx, credentials, safeOut);
+      bytes = result.bytes;
+      providerNote = result.providerNote;
+      suggestedExt = result.suggestedExt;
+    } else if ((def.provider === 'openai' || def.provider === 'hermes') && surface === 'video') {
+      const result = await renderOpenAICompatibleVideo(ctx, credentials, args.onProgress);
       bytes = result.bytes;
       providerNote = result.providerNote;
       suggestedExt = result.suggestedExt;
@@ -698,22 +711,22 @@ async function renderOpenAIImage(ctx: MediaContext, credentials: ProviderConfig)
   const body: Record<string, unknown> = {
     prompt: ctx.prompt || 'A high-quality reference image.',
     n: 1,
-    size: openaiSizeFor(ctx.model, ctx.aspect),
+    size: openaiSizeFor(wireModelId(ctx), ctx.aspect),
   };
   // For non-Azure calls, include `model` in the body. Azure infers it
   // from the deployment in the path so omitting it keeps payloads
   // compatible across both flavors. The wire-name (post-alias) goes
   // on the body so the user's alias from issue #1277 reaches the API.
   if (!azure) {
-    body.model = ctx.wireModel;
+    body.model = wireModelId(ctx);
   }
   // Capability branches key off the CATALOG id (not the alias) so a
   // user who aliased `dall-e-3` to a custom Azure / proxy deployment
   // still gets the DALL-E-specific quality + response_format flags
   // (lefarcen + codex P2 on PR #1309).
-  if (ctx.model.startsWith('dall-e-')) {
+  if (wireModelId(ctx).startsWith('dall-e-')) {
     body.response_format = 'b64_json';
-    body.quality = ctx.model === 'dall-e-3' ? 'hd' : 'standard';
+    body.quality = wireModelId(ctx) === 'dall-e-3' ? 'hd' : 'standard';
   } else {
     // gpt-image-* accepts quality 'high' | 'medium' | 'low'.
     body.quality = 'high';
@@ -739,7 +752,7 @@ async function renderOpenAIImage(ctx: MediaContext, credentials: ProviderConfig)
   });
   const text = await resp.text();
   if (!resp.ok) {
-    const tag = azure ? 'azure-openai' : 'openai';
+    const tag = azure ? 'azure-openai' : providerTagFor(ctx);
     throw new Error(`${tag} ${resp.status}: ${truncate(text, 240)}`);
   }
   let data: any;
@@ -762,10 +775,10 @@ async function renderOpenAIImage(ctx: MediaContext, credentials: ProviderConfig)
     throw new Error('openai response had neither b64_json nor url');
   }
 
-  const tag = azure ? 'azure-openai' : 'openai';
+  const tag = azure ? 'azure-openai' : providerTagFor(ctx);
   return {
     bytes,
-    providerNote: `${tag}/${ctx.wireModel} · ${ctx.aspect} · ${bytes.length} bytes`,
+    providerNote: `${tag}/${wireModelId(ctx)} · ${ctx.aspect} · ${bytes.length} bytes`,
     suggestedExt: '.png',
   };
 }
@@ -1089,9 +1102,9 @@ async function renderOpenAISpeech(ctx: MediaContext, credentials: ProviderConfig
     response_format: format,
   };
   if (!azure) {
-    body.model = ctx.wireModel;
+    body.model = wireModelId(ctx);
   }
-  if (instructions && ctx.model === 'gpt-4o-mini-tts') {
+  if (instructions && wireModelId(ctx) === 'gpt-4o-mini-tts') {
     body.instructions = instructions;
   }
 
@@ -1110,7 +1123,7 @@ async function renderOpenAISpeech(ctx: MediaContext, credentials: ProviderConfig
   });
   if (!resp.ok) {
     const text = await resp.text();
-    const tag = azure ? 'azure-openai' : 'openai';
+    const tag = azure ? 'azure-openai' : providerTagFor(ctx);
     throw new Error(`${tag} speech ${resp.status}: ${truncate(text, 240)}`);
   }
   const arr = await resp.arrayBuffer();
@@ -1118,13 +1131,122 @@ async function renderOpenAISpeech(ctx: MediaContext, credentials: ProviderConfig
   if (bytes.length === 0) {
     throw new Error('openai speech returned zero bytes');
   }
-  const tag = azure ? 'azure-openai' : 'openai';
-  const noteBits = [`${tag}/${ctx.wireModel}`, voiceId, `${format}`, `${bytes.length} bytes`];
+  const tag = azure ? 'azure-openai' : providerTagFor(ctx);
+  const noteBits = [`${tag}/${wireModelId(ctx)}`, voiceId, `${format}`, `${bytes.length} bytes`];
   if (instructions) noteBits.splice(2, 0, 'styled');
   return {
     bytes,
     providerNote: noteBits.join(' · '),
     suggestedExt: format === 'opus' ? '.ogg' : `.${format}`,
+  };
+}
+
+function buildOpenAIVideoSubmitUrl(baseUrl: string): string {
+  try {
+    const parsed = new URL(baseUrl);
+    parsed.pathname = parsed.pathname.replace(/\/+$/, '') + '/videos/generations';
+    return parsed.toString();
+  } catch {
+    return `${baseUrl.replace(/\/$/, '')}/videos/generations`;
+  }
+}
+
+function buildOpenAIVideoStatusUrl(baseUrl: string, requestId: string): string {
+  try {
+    const parsed = new URL(baseUrl);
+    parsed.pathname = parsed.pathname.replace(/\/+$/, '') + `/videos/${encodeURIComponent(requestId)}`;
+    return parsed.toString();
+  } catch {
+    return `${baseUrl.replace(/\/$/, '')}/videos/${encodeURIComponent(requestId)}`;
+  }
+}
+
+function openAIVideoUrls(payload: any): string[] {
+  const urls: string[] = [];
+  const push = (value: unknown) => {
+    if (typeof value === 'string' && value.trim()) urls.push(value.trim());
+  };
+  if (Array.isArray(payload?.video_urls)) {
+    for (const item of payload.video_urls) push(item);
+  }
+  push(payload?.video_url);
+  push(payload?.video?.url);
+  if (Array.isArray(payload?.data)) {
+    for (const item of payload.data) {
+      push(item?.url);
+      push(item?.video_url);
+    }
+  }
+  return urls;
+}
+
+function openAIVideoStatus(payload: any): string {
+  const status = typeof payload?.status === 'string' ? payload.status.toLowerCase() : '';
+  if (!status && openAIVideoUrls(payload).length > 0) return 'done';
+  if (['succeeded', 'success', 'completed', 'complete', 'done', 'ready'].includes(status)) return 'done';
+  if (['failed', 'error', 'cancelled', 'canceled', 'rejected', 'expired'].includes(status)) return 'failed';
+  return status || 'pending';
+}
+
+async function renderOpenAICompatibleVideo(ctx: MediaContext, credentials: ProviderConfig, onProgress?: ProgressFn): Promise<RenderResult> {
+  if (!credentials.apiKey) {
+    throw new Error('no OpenAI-compatible video credential — configure the provider in Settings or sign in to Hermes Hosted.');
+  }
+  const baseUrl = (credentials.baseUrl || 'https://api.openai.com/v1').replace(/\/$/, '');
+  const durationSec = Math.min(Math.max(ctx.length || 5, 1), 30);
+  const body: Record<string, unknown> = {
+    model: wireModelId(ctx),
+    prompt: ctx.prompt || 'A short cinematic clip.',
+    duration: durationSec,
+    n: 1,
+  };
+  if (ctx.imageRef?.dataUrl) body.image = ctx.imageRef.dataUrl;
+  if (ctx.aspect) {
+    body.aspect_ratio = ctx.aspect;
+    body.ratio = ctx.aspect;
+  }
+
+  const submitResp = await fetch(buildOpenAIVideoSubmitUrl(baseUrl), {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${credentials.apiKey}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  const submitText = await submitResp.text();
+  if (!submitResp.ok) throw new Error(`openai-compatible video submit ${submitResp.status}: ${truncate(submitText, 240)}`);
+  const submitData = JSON.parse(submitText);
+  let urls = openAIVideoUrls(submitData);
+  let status = openAIVideoStatus(submitData);
+  const requestId = submitData?.id || submitData?.request_id || null;
+  if (urls.length === 0 && requestId) {
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < 8 * 60 * 1000) {
+      await sleep(4000);
+      const pollResp = await fetch(buildOpenAIVideoStatusUrl(baseUrl, requestId), {
+        headers: { authorization: `Bearer ${credentials.apiKey}` },
+      });
+      const pollText = await pollResp.text();
+      if (!pollResp.ok) throw new Error(`openai-compatible video poll ${pollResp.status}: ${truncate(pollText, 240)}`);
+      const pollData = JSON.parse(pollText);
+      status = openAIVideoStatus(pollData);
+      urls = openAIVideoUrls(pollData);
+      if (typeof onProgress === 'function') onProgress(`video task ${requestId} status=${status}`);
+      if (urls.length > 0 || status === 'done') break;
+      if (status === 'failed') throw new Error('openai-compatible video task failed');
+    }
+  }
+  if (urls.length === 0) {
+    throw new Error(`openai-compatible video returned no downloadable url (status=${status || 'unknown'})`);
+  }
+  const dlResp = await fetch(urls[0]);
+  if (!dlResp.ok) throw new Error(`openai-compatible video fetch ${dlResp.status}`);
+  const bytes = Buffer.from(await dlResp.arrayBuffer());
+  return {
+    bytes,
+    providerNote: `${providerTagFor(ctx)}/${wireModelId(ctx)} · ${ctx.aspect} · ${durationSec}s · ${bytes.length} bytes`,
+    suggestedExt: '.mp4',
   };
 }
 

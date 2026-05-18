@@ -1372,6 +1372,39 @@ async function syncHermesDesktopBridgeProcessEnv() {
   const config = await readHermesDesktopConfigFromBridge().catch(() => null);
   if (!config) return null;
   Object.assign(process.env, applyHermesDesktopBridgeEnv(process.env, config));
+
+  // Sync bridge media providers to media-config.json
+  const bridgeProviders = config.mediaProviders || config.media_providers;
+  if (Array.isArray(bridgeProviders) && bridgeProviders.length > 0) {
+    try {
+      const { writeConfig } = await import('./media-config.js');
+      const projectRoot = process.cwd();
+      const providers = {};
+      for (const mp of bridgeProviders) {
+        const id = mp.providerId || mp.provider_id;
+        if (!id) continue;
+        const key = mp.apiKey || mp.api_key || '';
+        const url = mp.baseUrl || mp.base_url || '';
+        if (key || url) {
+          providers[id] = { apiKey: key, baseUrl: url };
+        }
+      }
+      // For hermes provider, also set OPENAI_API_KEY since media.ts
+      // routes hermes through OpenAI-compatible renderers
+      if (providers.hermes && providers.hermes.apiKey) {
+        process.env.OPENAI_API_KEY = providers.hermes.apiKey;
+        if (providers.hermes.baseUrl) {
+          process.env.OPENAI_BASE_URL = providers.hermes.baseUrl;
+        }
+      }
+      if (Object.keys(providers).length > 0) {
+        await writeConfig(projectRoot, { providers });
+      }
+    } catch (err) {
+      console.warn('[hermes-bridge] Failed to sync media providers:', err);
+    }
+  }
+
   return config;
 }
 
