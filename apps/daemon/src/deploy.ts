@@ -2,8 +2,7 @@ import fs from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { randomUUID } from 'node:crypto';
-import { hash as blake3Hash } from 'blake3-wasm';
+import { createHash, randomUUID } from 'node:crypto';
 import { readProjectFile, validateProjectPath } from './projects.js';
 
 export const VERCEL_PROVIDER_ID = 'vercel-self';
@@ -1112,7 +1111,7 @@ async function cloudflarePagesMissingAssetHashes(uploadToken: string, hashes: st
 export function cloudflarePagesAssetHash(file: Pick<DeployFile, 'file' | 'data'>) {
   const data = Buffer.from(file.data);
   const extension = path.posix.extname(file.file).slice(1);
-  return blake3Hash(`${data.toString('base64')}${extension}`).toString('hex').slice(0, 32);
+  return createHash('sha256').update(data).update(':').update(extension).digest('hex').slice(0, 32);
 }
 
 export function extractHtmlReferences(html: string) {
@@ -1935,7 +1934,7 @@ function cloudflarePagesDnsMarker(projectId: string, projectName: string, pagesT
 }
 
 function shortCloudflareHash(value: unknown) {
-  return blake3Hash(String(value || '')).toString('hex').slice(0, 12);
+  return createHash('sha256').update(String(value || '')).digest('hex').slice(0, 12);
 }
 
 function safeVercelProjectName(raw: unknown) {

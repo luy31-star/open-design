@@ -439,7 +439,6 @@ export interface PromptTemplateDetail extends PromptTemplateSummary {
 }
 
 export type {
-  AgentInfo,
   AgentTestRequest,
   AppVersionInfo,
   AppVersionResponse,

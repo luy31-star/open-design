@@ -261,12 +261,12 @@ function clampWithWarning(value: unknown, allowed: number[], flagName: string): 
   return { value: clamped, warning: null };
 }
 
-function wireModelId(ctx: MediaContext): string {
-  return ctx.wireModel || ctx.model;
+function wireModelId(ctx: MediaContext | null | undefined): string {
+  return ctx?.modelDef?.wireId || ctx?.wireModel || ctx?.model || '';
 }
 
-function providerTagFor(ctx: MediaContext, fallback = 'openai'): string {
-  return ctx.provider?.id === 'hermes' ? 'hermes' : fallback;
+function providerTagFor(ctx: MediaContext | null | undefined, fallback = 'openai'): string {
+  return ctx?.provider?.id === 'hermes' ? 'hermes' : fallback;
 }
 
 /**
@@ -1161,27 +1161,30 @@ function buildOpenAIVideoStatusUrl(baseUrl: string, requestId: string): string {
   }
 }
 
-function openAIVideoUrls(payload: any): string[] {
+function openAIVideoUrls(payload: unknown): string[] {
   const urls: string[] = [];
   const push = (value: unknown) => {
     if (typeof value === 'string' && value.trim()) urls.push(value.trim());
   };
-  if (Array.isArray(payload?.video_urls)) {
+  if (isRecord(payload) && Array.isArray(payload.video_urls)) {
     for (const item of payload.video_urls) push(item);
   }
-  push(payload?.video_url);
-  push(payload?.video?.url);
-  if (Array.isArray(payload?.data)) {
+  if (isRecord(payload)) {
+    push(payload.video_url);
+    if (isRecord(payload.video)) push(payload.video.url);
+  }
+  if (isRecord(payload) && Array.isArray(payload.data)) {
     for (const item of payload.data) {
-      push(item?.url);
-      push(item?.video_url);
+      if (!isRecord(item)) continue;
+      push(item.url);
+      push(item.video_url);
     }
   }
   return urls;
 }
 
-function openAIVideoStatus(payload: any): string {
-  const status = typeof payload?.status === 'string' ? payload.status.toLowerCase() : '';
+function openAIVideoStatus(payload: unknown): string {
+  const status = isRecord(payload) && typeof payload.status === 'string' ? payload.status.toLowerCase() : '';
   if (!status && openAIVideoUrls(payload).length > 0) return 'done';
   if (['succeeded', 'success', 'completed', 'complete', 'done', 'ready'].includes(status)) return 'done';
   if (['failed', 'error', 'cancelled', 'canceled', 'rejected', 'expired'].includes(status)) return 'failed';
@@ -1240,7 +1243,11 @@ async function renderOpenAICompatibleVideo(ctx: MediaContext, credentials: Provi
   if (urls.length === 0) {
     throw new Error(`openai-compatible video returned no downloadable url (status=${status || 'unknown'})`);
   }
-  const dlResp = await fetch(urls[0]);
+  const downloadUrl = urls[0];
+  if (!downloadUrl) {
+    throw new Error('openai-compatible video returned an empty download url');
+  }
+  const dlResp = await fetch(downloadUrl);
   if (!dlResp.ok) throw new Error(`openai-compatible video fetch ${dlResp.status}`);
   const bytes = Buffer.from(await dlResp.arrayBuffer());
   return {

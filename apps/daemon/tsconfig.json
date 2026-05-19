@@ -21,6 +21,7 @@
     "types": ["node", "vitest"]
   },
   "include": [
+    "src/**/*.d.ts",
     "src/**/*.ts",
     "src/**/*.tsx"
   ],

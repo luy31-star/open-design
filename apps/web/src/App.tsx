@@ -56,7 +56,6 @@ import {
   fetchMediaProvidersFromDaemon,
   hasAnyConfiguredProvider,
   fetchComposioConfigFromDaemon,
-  fetchHermesDesktopConfig,
   loadConfig,
   applyHermesDesktopConfig,
   mergeDaemonConfig,
@@ -100,6 +99,10 @@ import type {
   PromptTemplateSummary,
   SkillSummary,
 } from './types';
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
 
 export function shouldSyncMediaProvidersOnSave(
   mediaProviders: AppConfig['mediaProviders'],

@@ -20,6 +20,11 @@ import {
 
 const STORAGE_KEY = 'open-design:config';
 const CONFIG_MIGRATION_VERSION = 1;
+const DEFAULT_API_PROVIDER = {
+  protocol: 'anthropic' as const,
+  baseUrl: 'https://api.anthropic.com',
+  model: 'claude-sonnet-4-5',
+};
 
 // Hatched out of the box, but tucked away — the user has to go through
 // either the entry-view "adopt a pet" callout or Settings → Pets to
