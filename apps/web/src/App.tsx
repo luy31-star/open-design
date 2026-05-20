@@ -56,6 +56,7 @@ import {
   fetchMediaProvidersFromDaemon,
   hasAnyConfiguredProvider,
   fetchComposioConfigFromDaemon,
+  fetchHermesDesktopConfig,
   loadConfig,
   applyHermesDesktopConfig,
   mergeDaemonConfig,
@@ -120,10 +121,6 @@ function mergeHermesDesktopConfig(
   setDesktopManaged(true);
   setConfig((prev) => applyHermesDesktopConfig({ ...prev }, desktopConfig));
   return true;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 function normalizeSavedComposioConfig(config: AppConfig['composio']): AppConfig['composio'] {

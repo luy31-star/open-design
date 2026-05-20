@@ -8851,7 +8851,7 @@ export async function startServer({
     /** @type {Partial<ChatRequest> & { imagePaths?: string[] }} */
     chatBody = chatBody || {};
     const {
-      agentId,
+      agentId: requestedAgentId,
       message,
       currentPrompt,
       systemPrompt,
