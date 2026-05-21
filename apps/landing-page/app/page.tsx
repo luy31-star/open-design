@@ -1214,6 +1214,20 @@ export default function Page({ counts, github }: PageProps) {
                   <li>
                     <a href='/craft/'>Craft</a>
                   </li>
+                  {/*
+                   * Sister product: HTML Anything is the agent-driven HTML
+                   * editor from the same team. Listed here as a peer to the
+                   * Open Design library facets so the home delivers a real
+                   * inline anchor link to /html-anything/ — nav-only entries
+                   * (the Product dropdown) carry less SEO weight than a body
+                   * anchor in a discoverable section like the footer. The
+                   * brand name stays in English on every locale, so we
+                   * hardcode the label rather than threading a new key
+                   * through 18 home-copy translations.
+                   */}
+                  <li>
+                    <a href='/html-anything/'>HTML Anything</a>
+                  </li>
                 </ul>
               </div>
               <div className='foot-col'>

@@ -292,6 +292,7 @@ describe('ProjectView conversation run isolation', () => {
       expect.objectContaining({
         projectId: 'project-1',
         conversationId: 'conv-b',
+        locale: 'zh-CN',
       }),
     );
   });

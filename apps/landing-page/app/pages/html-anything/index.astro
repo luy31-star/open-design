@@ -139,11 +139,28 @@ const jsonLd: Array<Record<string, unknown>> = [
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
     name: 'HTML Anything',
-    alternateName: 'The agentic HTML editor',
+    /*
+     * alternateName fed as an array so Google understands the project
+     * is searched as: hyphenated, spaced, joined, capitalized variants,
+     * and the tagline. Each entry is a real query users type — keeping
+     * them in this list signals canonical-name equivalence rather than
+     * leaving the matching to Google's tokenizer alone.
+     */
+    alternateName: [
+      'html anything',
+      'html-anything',
+      'htmlanything',
+      'HTML Anything Editor',
+      'The agentic HTML editor',
+    ],
     applicationCategory: 'DeveloperApplication',
     operatingSystem: 'macOS, Linux, Windows',
     description,
     url: HA_URL,
+    sameAs: [
+      'https://open-design.ai/html-anything/',
+      HA_URL,
+    ],
     license: 'https://www.apache.org/licenses/LICENSE-2.0',
     offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
     author: {

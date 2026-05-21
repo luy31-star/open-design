@@ -249,8 +249,6 @@
   overflow: hidden;
   padding: 0;
   color: var(--text);
-  font: inherit;
-  font-size: 15px;
   /* Generous line-height so adjacent slot/mention pills do not
      collide vertically when the prompt wraps. Each pill paints a
      2px ring via `box-shadow`; with a tight line-height the rings
@@ -258,15 +256,12 @@
      Bumping the line-height leaves ~8px of clear space between
      pill rows. The textarea below mirrors this value so the
      overlay and the editable text stay pixel-aligned. */
-  line-height: 1.85;
   pointer-events: none;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
 }
 .home-hero__prompt-highlight-inner {
+  position: relative;
+  top: calc(-1 * var(--home-hero-prompt-scroll, 0px));
   min-height: 100%;
-  padding: 6px;
-  transform: translateY(calc(-1 * var(--home-hero-prompt-scroll, 0px)));
 }
 .home-hero__prompt-slot {
   display: inline;
